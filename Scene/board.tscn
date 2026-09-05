@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://dojsby78m8tvf"]
+
+[ext_resource type="Script" uid="uid://oyqcb3xbdyhk" path="res://script/Board.gd" id="1_4vpt5"]
+[ext_resource type="Script" uid="uid://d34oehcy7qp3t" path="res://script/piece_spawner.gd" id="3_awbcf"]
+[ext_resource type="Script" uid="uid://b86fb6ryhew8p" path="res://script/click_to_move.gd" id="3_yfijq"]
+[ext_resource type="Script" uid="uid://whjyk1b6jhxe" path="res://script/ai_player.gd" id="4_aiplayer"]
+
+[node name="Board" type="Node2D" unique_id=1136695547]
+script = ExtResource("1_4vpt5")
+
+[node name="TopLeft" type="Marker2D" parent="." unique_id=181403162]
+position = Vector2(494.73218, 173.69888)
+
+[node name="TopRight" type="Marker2D" parent="." unique_id=542881345]
+position = Vector2(1424.4875, 173.23587)
+
+[node name="BottomLeft" type="Marker2D" parent="." unique_id=711153172]
+position = Vector2(321.15778, 1046.0743)
+
+[node name="BottomRight" type="Marker2D" parent="." unique_id=732786133]
+position = Vector2(1606.6643, 1049.2783)
+
+[node name="Pieces" type="Node2D" parent="." unique_id=2066039863]
+script = ExtResource("3_awbcf")
+
+[node name="ClickToMove" type="Node2D" parent="." unique_id=1729737126]
+script = ExtResource("3_yfijq")
+
+[node name="AIPlayer" type="Node" parent="." unique_id=1407761586]
+script = ExtResource("4_aiplayer")

@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://kwgletldb5pq"]
+
+[ext_resource type="Texture2D" uid="uid://cdwc8ndi3hg16" path="res://asset/mainmenu_bg .jpg" id="1_ftydy"]
+[ext_resource type="Script" uid="uid://mnmoxibpn424" path="res://script/main_menu.gd" id="1_hptlk"]
+[ext_resource type="Texture2D" uid="uid://dmhstknymhnot" path="res://asset/singleplayerbutton.png" id="2_pvidh"]
+[ext_resource type="Texture2D" uid="uid://bql0mas2rmxuy" path="res://asset/multiplayerbutton.png" id="3_hptlk"]
+[ext_resource type="Texture2D" uid="uid://h2a6k8kttxkh" path="res://asset/singleplayer.png" id="3_yok32"]
+[ext_resource type="Texture2D" uid="uid://ddin2pg5ah62m" path="res://asset/settingbutton.png" id="4_oqads"]
+[ext_resource type="Texture2D" uid="uid://diki5f08e0b3w" path="res://asset/multiplayer.png" id="5_klvvj"]
+[ext_resource type="Texture2D" uid="uid://d1eu2b73auoyt" path="res://asset/Quitbutton.png" id="5_s2f1d"]
+[ext_resource type="Texture2D" uid="uid://cdms2wmgj8qee" path="res://asset/setting.png" id="7_47k5r"]
+[ext_resource type="Texture2D" uid="uid://b54v3qxcv5ibo" path="res://asset/quit.png" id="9_hag5k"]
+
+[node name="MainMenu" type="Control" unique_id=443350700]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_hptlk")
+
+[node name="MainmenuBg" type="Sprite2D" parent="." unique_id=1940138646]
+position = Vector2(959.99994, 599.99994)
+scale = Vector2(1.3953488, 1.5625)
+texture = ExtResource("1_ftydy")
+
+[node name="Singleplayerbutton" type="TextureButton" parent="." unique_id=680172493]
+layout_mode = 0
+offset_left = 804.0
+offset_top = 186.0
+offset_right = 1192.0
+offset_bottom = 381.0
+texture_normal = ExtResource("3_yok32")
+texture_hover = ExtResource("2_pvidh")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="multiplayerbutton" type="TextureButton" parent="." unique_id=174130478]
+layout_mode = 0
+offset_left = 801.0
+offset_top = 399.0
+offset_right = 1192.0
+offset_bottom = 597.0
+texture_normal = ExtResource("5_klvvj")
+texture_hover = ExtResource("3_hptlk")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="settingbutton" type="TextureButton" parent="." unique_id=813990141]
+layout_mode = 0
+offset_left = 798.0
+offset_top = 628.0
+offset_right = 1199.0
+offset_bottom = 841.0
+texture_normal = ExtResource("7_47k5r")
+texture_hover = ExtResource("4_oqads")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="quitbutton" type="TextureButton" parent="." unique_id=1347079071]
+layout_mode = 0
+offset_left = 790.0
+offset_top = 860.0
+offset_right = 1192.0
+offset_bottom = 1071.0
+texture_normal = ExtResource("9_hag5k")
+texture_hover = ExtResource("5_s2f1d")
+ignore_texture_size = true
+stretch_mode = 4

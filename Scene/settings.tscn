@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://8wdaahqg6rph"]
+
+[ext_resource type="Script" uid="uid://cgmbqm7tammap" path="res://script/settings.gd" id="1_rukqk"]
+[ext_resource type="Texture2D" uid="uid://cdwc8ndi3hg16" path="res://asset/mainmenu_bg .jpg" id="2_qampi"]
+[ext_resource type="Texture2D" uid="uid://yfqpunae3msc" path="res://asset/ui/settings_panel.png" id="3_cmh6x"]
+[ext_resource type="Texture2D" uid="uid://yje46gd08ton" path="res://asset/ui/settings_grabber.png" id="4_cwsml"]
+[ext_resource type="Texture2D" uid="uid://b54v3qxcv5ibo" path="res://asset/quit.png" id="5_ytsmf"]
+[ext_resource type="Texture2D" uid="uid://d1eu2b73auoyt" path="res://asset/Quitbutton.png" id="6_cclqt"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6fo2m"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_cofij"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_4p67h"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j1g78"]
+
+[node name="Settings" type="Control" unique_id=896985265]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_rukqk")
+
+[node name="Background" type="Sprite2D" parent="." unique_id=560694844]
+position = Vector2(960, 600.25)
+scale = Vector2(1.3953489, 1.5618489)
+texture = ExtResource("2_qampi")
+
+[node name="VolumePanel" type="Sprite2D" parent="Background" unique_id=1594332124]
+position = Vector2(-18.060371, -102.44266)
+scale = Vector2(0.27548984, 0.24612142)
+texture = ExtResource("3_cmh6x")
+
+[node name="MusicSlider" type="HSlider" parent="." unique_id=2040533967]
+layout_mode = 0
+offset_left = 685.2069
+offset_top = 309.0
+offset_right = 1189.2069
+offset_bottom = 374.0
+theme_override_icons/grabber = ExtResource("4_cwsml")
+theme_override_icons/grabber_highlight = ExtResource("4_cwsml")
+theme_override_icons/grabber_disabled = ExtResource("4_cwsml")
+theme_override_styles/slider = SubResource("StyleBoxEmpty_6fo2m")
+theme_override_styles/grabber_area = SubResource("StyleBoxEmpty_cofij")
+max_value = 1.0
+step = 0.05
+value = 0.1
+
+[node name="SfxSlider" type="HSlider" parent="." unique_id=494649345]
+layout_mode = 0
+offset_left = 686.2069
+offset_top = 535.0
+offset_right = 1194.2069
+offset_bottom = 596.0
+theme_override_icons/grabber = ExtResource("4_cwsml")
+theme_override_icons/grabber_highlight = ExtResource("4_cwsml")
+theme_override_icons/grabber_disabled = ExtResource("4_cwsml")
+theme_override_styles/slider = SubResource("StyleBoxEmpty_4p67h")
+theme_override_styles/grabber_area = SubResource("StyleBoxEmpty_j1g78")
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="BackButton" type="TextureButton" parent="." unique_id=1758854358]
+layout_mode = 0
+offset_left = 783.0
+offset_top = 744.0
+offset_right = 1116.0
+offset_bottom = 929.0
+texture_normal = ExtResource("5_ytsmf")
+texture_hover = ExtResource("6_cclqt")
+ignore_texture_size = true
+stretch_mode = 5

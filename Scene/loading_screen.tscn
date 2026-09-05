@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://drusblkcgrc5t"]
+
+[ext_resource type="Texture2D" uid="uid://na8ok2b2hr3l" path="res://asset/loading.jpg" id="1_2vpup"]
+[ext_resource type="Script" uid="uid://otouih4fl5x2" path="res://script/loading.gd" id="1_jvqe4"]
+[ext_resource type="Texture2D" uid="uid://bfiwny6lnqnkl" path="res://asset/progressbar_under.png" id="2_weiyv"]
+[ext_resource type="Texture2D" uid="uid://dal15celh76q2" path="res://asset/progressbar_fill.png" id="3_jvqe4"]
+
+[node name="LoadingScreen" type="Control" unique_id=489101620]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_jvqe4")
+
+[node name="Loading" type="Sprite2D" parent="." unique_id=735333535]
+position = Vector2(959.75, 599)
+scale = Vector2(0.7311356, 0.7340686)
+texture = ExtResource("1_2vpup")
+
+[node name="ProgressBar" type="TextureProgressBar" parent="." unique_id=1091452819]
+layout_mode = 0
+offset_left = 458.0
+offset_top = 705.0
+offset_right = 1604.0
+offset_bottom = 1156.0
+texture_under = ExtResource("2_weiyv")
+texture_over = ExtResource("2_weiyv")
+texture_progress = ExtResource("3_jvqe4")
+texture_progress_offset = Vector2(0, 40)
