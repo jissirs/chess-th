@@ -11,7 +11,6 @@
 [ext_resource type="Texture2D" uid="uid://ortyk7kljwtw" path="res://asset/restartbutton.png" id="8_restarthover"]
 [ext_resource type="Texture2D" uid="uid://7sg2am7o8xrk" path="res://asset/mainmenu.png" id="9_mainmenu"]
 [ext_resource type="Texture2D" uid="uid://bdomf8u586kw5" path="res://asset/mainmenubutton.png" id="10_mainmenuhover"]
-[ext_resource type="Texture2D" uid="uid://li8wd3yealwo" path="res://asset/ui/stat_frame.png" id="11_statframe"]
 
 [node name="Main" type="Node2D" unique_id=979103041]
 script = ExtResource("1_sblpm")
@@ -24,6 +23,7 @@ texture = ExtResource("1_f6udf")
 [node name="Board" parent="." unique_id=675668318 instance=ExtResource("2_board")]
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=950413545]
+visible = false
 
 [node name="PauseButton" type="TextureButton" parent="UI" unique_id=1183763250]
 process_mode = 3
@@ -79,10 +79,6 @@ grow_vertical = 2
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="Label" type="Label" parent="UI/PauseMenu/PausePanel/VBoxContainer" unique_id=893441187]
-layout_mode = 2
-horizontal_alignment = 1
-
 [node name="Resume" type="TextureButton" parent="UI/PauseMenu/PausePanel/VBoxContainer" unique_id=446580232]
 custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
@@ -109,95 +105,3 @@ texture_normal = ExtResource("9_mainmenu")
 texture_hover = ExtResource("10_mainmenuhover")
 ignore_texture_size = true
 stretch_mode = 4
-
-[node name="TimerPanel" type="TextureRect" parent="UI" unique_id=1078590874]
-visible = false
-offset_left = 830.0
-offset_top = 20.0
-offset_right = 1090.0
-offset_bottom = 250.0
-texture = ExtResource("11_statframe")
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="UI/TimerPanel" unique_id=1526862330]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.55, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 28
-text = "TIME
-00:30"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ScorePanel" type="TextureRect" parent="UI" unique_id=953925948]
-visible = false
-offset_left = 1630.0
-offset_top = 20.0
-offset_right = 1890.0
-offset_bottom = 250.0
-texture = ExtResource("11_statframe")
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="UI/ScorePanel" unique_id=429126485]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.55, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 28
-text = "SCORE
-000000"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OurTeamPanel" type="TextureRect" parent="UI" unique_id=1287492990]
-visible = false
-offset_left = 20.0
-offset_top = 950.0
-offset_right = 280.0
-offset_bottom = 1180.0
-texture = ExtResource("11_statframe")
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="UI/OurTeamPanel" unique_id=2051932544]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.55, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "OUR TEAM
-16"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OpponentTeamPanel" type="TextureRect" parent="UI" unique_id=161470907]
-visible = false
-offset_left = 1630.0
-offset_top = 950.0
-offset_right = 1890.0
-offset_bottom = 1180.0
-texture = ExtResource("11_statframe")
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="UI/OpponentTeamPanel" unique_id=2080447635]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.55, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "OPPONENT TEAM
-16"
-horizontal_alignment = 1
-vertical_alignment = 1
