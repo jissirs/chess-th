@@ -35,8 +35,11 @@ func _ready() -> void:
 	# จึงยกตัวหมากขึ้นแทน (ดู Pieces.z_index ใน piece_spawner.gd) แล้วปล่อยตัวนี้ไว้ที่ 0 ตามปกติ
 	board.turn_changed.connect(_on_board_changed)
 	board.game_ended.connect(_on_game_ended)
+	tree_exiting.connect(AudioManager.stop_character_audio)
 
 func _on_board_changed(_side: int) -> void:
+	_deselect()
+	_clear_promotion_picker()
 	queue_redraw()  # วงแหวนเตือน "ถูกรุก" ต้องวาดใหม่ทุกครั้งที่เปลี่ยนตา
 
 func _on_game_ended(_result: String, _winner: int) -> void:
@@ -135,6 +138,8 @@ func _try_select(cell: Vector2i) -> void:
 	if piece == null or piece.side != board.side_to_move:
 		return  # ช่องว่าง หรือหมากฝ่ายตรงข้าม (ยังไม่ถึงตาเขา)
 
+	# Friendly units can acknowledge a click even when movement is blocked.
+	AudioManager.play_greeting(piece.piece_kind)
 	var moves: Array = board.legal_moves_for(cell)
 	if moves.is_empty():
 		return  # หมากตัวนี้ขยับไม่ได้เลย (เช่นถูกตรึงอยู่หน้าคิง) — ไม่ต้องเลือกให้เสียเวลา

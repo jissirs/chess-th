@@ -65,9 +65,9 @@ value = 1.0
 [node name="BackButton" type="TextureButton" parent="." unique_id=1758854358]
 layout_mode = 0
 offset_left = 783.0
-offset_top = 744.0
+offset_top = 820.0
 offset_right = 1116.0
-offset_bottom = 929.0
+offset_bottom = 1005.0
 texture_normal = ExtResource("5_ytsmf")
 texture_hover = ExtResource("6_cclqt")
 ignore_texture_size = true

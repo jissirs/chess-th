@@ -22,6 +22,7 @@ const SFX_MOVE := preload("res://asset/audio/footsteps.mp3")  # เสียง�
 var board_state: Array = []
 
 ## เดินสำเร็จหนึ่งตา (ส่ง piece หลัง promote แล้ว ถ้ามีการ promote)
+signal pieces_ready
 signal move_made(from_cell: Vector2i, to_cell: Vector2i, piece: ChessPiece)
 ## เปลี่ยนตาเดินเป็นอีกฝ่าย
 signal turn_changed(side: int)
@@ -39,8 +40,14 @@ var fullmove_number: int = 1
 var game_over: bool = false
 ## [from, to] ของตาล่าสุด ว่างถ้ายังไม่มีใครเดิน
 var last_move: Array = []
+## จำนวนครั้งที่แต่ละตำแหน่งเกิดขึ้น (key จาก ChessRules.position_key) — ใช้ตัดสินเสมอแบบซ้ำตา
+const REPETITION_LIMIT := 3
+var position_counts: Dictionary = {}
 ## true ระหว่างที่หมากกำลังเลื่อนด้วย animation — กันไม่ให้คลิกเดินซ้อนจนสถานะสับสน
 var animating: bool = false
+
+const AI_SKILL_RECOVERY_MOVES := 3
+var ai_skill_moves_remaining: int = 0
 
 func _ready() -> void:
 	_init_board_state()
@@ -62,6 +69,8 @@ func _reset_game_state() -> void:
 	game_over = false
 	last_move = []
 	animating = false
+	ai_skill_moves_remaining = 0
+	position_counts.clear()
 
 ## World position of the center of cell (col, row), 0-indexed from the top-left square.
 func cell_to_world(col: int, row: int) -> Vector2:
@@ -176,7 +185,7 @@ signal piece_attacked(attacker: ChessPiece, victim: ChessPiece, damage: float, k
 ##   3. หลังเล่นจบ: promote / en passant / 50 ตา / เปลี่ยนตา (เฉพาะกรณีที่ตัวหมากขยับจริง)
 ##   4. ส่ง signal ให้ UI ไปอัปเดตทีหลังสุด
 func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPiece.Kind.QUEEN) -> bool:
-	if animating or not (to_cell in legal_moves_for(from_cell)):
+	if (is_inside_tree() and get_tree().paused) or animating or not (to_cell in legal_moves_for(from_cell)):
 		return false
 
 	var piece: ChessPiece = board_state[from_cell.y][from_cell.x]
@@ -277,6 +286,8 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 	# 3d) สลับตาเดิน — เสียตาเสมอไม่ว่าจะโจมตีตายหรือไม่ตาย (ตัดสินใจโจมตีก็ถือว่าเสียตานี้ไปแล้ว)
 	last_move = [from_cell, to_cell]
 	_tick_skill_cooldowns()
+	if piece.is_ai_controlled():
+		ai_skill_moves_remaining = maxi(ai_skill_moves_remaining - 1, 0)
 	side_to_move = ChessRules.opponent(side_to_move)
 
 	# ---------- ขั้นที่ 4: ส่ง signal ให้ UI ไปอัปเดต (ต้องมาหลังสุด) ----------
@@ -288,20 +299,34 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 ## เกมจบแล้วหรือยัง — ใช้สกิลของหมากที่ cell แทนการเดิน (เสียตาเหมือนเดิน แต่ตัวหมากไม่ขยับ)
 ## ตอนนี้รองรับสกิลครบทุกชนิดตาม ChessPiece.skill_label() — เพิ่ม/แก้ผลลัพธ์ได้ที่ _apply_skill()
 signal skill_used(piece: ChessPiece, effect_kind: String)
+var last_skill_targets: Array = []
 
 func try_use_skill(cell: Vector2i) -> bool:
-	if animating or game_over:
+	if (is_inside_tree() and get_tree().paused) or animating or game_over:
 		return false
 	var piece: ChessPiece = ChessRules.at(board_state, cell)
 	if piece == null or piece.side != side_to_move or not piece.can_use_skill():
+		return false
+
+	if ChessRules.is_in_check(board_state, side_to_move):
+		return false
+
+	if piece.is_ai_controlled() and ai_skill_moves_remaining > 0:
 		return false
 
 	var effect_kind := _apply_skill(piece)
 	skill_used.emit(piece, effect_kind)
 
 	last_move = [cell, cell]
+	en_passant_target = ChessRules.NO_CELL
+	halfmove_clock += 1
+	if side_to_move == ChessPiece.Team.BLACK:
+		fullmove_number += 1
 	_tick_skill_cooldowns()
-	piece.skill_cooldown_remaining = ChessPiece.SKILL_COOLDOWN_TURNS
+	piece.skill_cooldown_remaining = piece.skill_cooldown_turns()
+	piece.skill_uses += 1
+	if piece.is_ai_controlled():
+		ai_skill_moves_remaining = AI_SKILL_RECOVERY_MOVES
 	side_to_move = ChessRules.opponent(side_to_move)
 	turn_changed.emit(side_to_move)
 	_evaluate_status()
@@ -309,16 +334,18 @@ func try_use_skill(cell: Vector2i) -> bool:
 
 ## ใช้ผลของสกิลจริง คืนชื่อประเภทเอฟเฟกต์ ("heal"/"buff"/"rally") ให้ piece_spawner.gd เลือกภาพให้ตรง
 func _apply_skill(piece: ChessPiece) -> String:
+	last_skill_targets.clear()
 	match piece.piece_kind:
 		ChessPiece.Kind.PAWN:
-			piece.hp = minf(piece.hp + 40.0, piece.max_hp)
+			piece.hp = minf(piece.hp + piece.self_heal_amount(), piece.max_hp)
 			return "heal"
 		ChessPiece.Kind.BISHOP:
-			piece.hp = piece.max_hp
+			piece.hp = minf(piece.hp + piece.self_heal_amount(), piece.max_hp)
 			return "heal"
 		ChessPiece.Kind.ROOK:
-			piece.max_hp += 30.0
-			piece.hp += 30.0
+			var armor := piece.fortify_amount()
+			piece.max_hp += armor
+			piece.hp += armor
 			return "heal"
 		ChessPiece.Kind.KNIGHT:
 			piece.attack_buff_multiplier = 1.5
@@ -327,10 +354,9 @@ func _apply_skill(piece: ChessPiece) -> String:
 			piece.attack_buff_multiplier = 2.0
 			return "buff"
 		ChessPiece.Kind.KING:
-			for row in board_state:
-				for p in row:
-					if p != null and p.side == piece.side:
-						p.hp = minf(p.hp + 20.0, p.max_hp)
+			last_skill_targets = piece.rally_targets(board_state)
+			for target in last_skill_targets:
+				target.hp = minf(target.hp + piece.rally_heal_amount(), target.max_hp)
 			return "rally"
 		_:
 			return ""
@@ -338,6 +364,12 @@ func _apply_skill(piece: ChessPiece) -> String:
 func _evaluate_status() -> void:
 	var state: Dictionary = ChessRules.status(board_state, side_to_move, en_passant_target, halfmove_clock)
 	var result: String = state.result
+	if result == "":
+		# ซ้ำตา 3 ครั้ง: นับจำนวนครั้งที่ตำแหน่งเดิม (ฝ่ายที่ถึงตาเดียวกัน) เกิดขึ้นตลอดเกม
+		var key := ChessRules.position_key(board_state, side_to_move, en_passant_target)
+		position_counts[key] = int(position_counts.get(key, 0)) + 1
+		if position_counts[key] >= REPETITION_LIMIT:
+			result = "threefold_repetition"
 	if result != "":
 		game_over = true
 		# รุกฆาตเท่านั้นที่มีผู้ชนะ กรณีอื่น (อับ / หมากไม่พอ / 50 ตา) คือเสมอ
@@ -355,6 +387,7 @@ func _promote(pawn: ChessPiece, cell: Vector2i, kind: int) -> ChessPiece:
 	if promoted == null:
 		return pawn
 	promoted.has_moved = true
+	promoted.skill_uses = pawn.skill_uses
 	if pieces.has_method("play_promote_effect"):
 		pieces.play_promote_effect(promoted, cell)
 	pawn.queue_free()
@@ -396,10 +429,15 @@ func _tick_skill_cooldowns() -> void:
 ## บังคับเสียตาโดยไม่เดินอะไรเลย (หมดเวลาต่อตา) — ทำ bookkeeping เหมือนท้าย try_move() ทุกอย่าง
 ## ยกเว้นไม่มีการขยับหมาก/กิน/promote เพราะไม่มีตาเดินจริงเกิดขึ้น
 func force_pass_turn() -> void:
-	if animating or game_over:
+	if (is_inside_tree() and get_tree().paused) or animating or game_over:
+		return
+	if ChessRules.is_in_check(board_state, side_to_move):
+		game_over = true
+		game_ended.emit("timeout", ChessRules.opponent(side_to_move))
 		return
 	last_move = []
 	en_passant_target = ChessRules.NO_CELL
+	halfmove_clock += 1
 	_tick_skill_cooldowns()
 	if side_to_move == ChessPiece.Team.BLACK:
 		fullmove_number += 1

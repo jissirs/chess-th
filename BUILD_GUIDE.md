@@ -1,17 +1,17 @@
 # คู่มือสร้างเกมหมากรุก Chess TH ตั้งแต่ศูนย์
 
-คู่มือนี้พาสร้างเกมตั้งแต่โปรเจกต์เปล่า **จับมือทำทีละขั้น พร้อมโค้ดเต็มทุกไฟล์**
-เขียนแต่ละไฟล์ **ครั้งเดียวจบด้วยเวอร์ชันล่าสุดที่ใช้งานจริงในโปรเจกต์ ณ ตอนนี้** ไม่มีเวอร์ชันเก่า
-ปนอยู่ ไม่ต้องแก้ย้อนไปย้อนมา — ทำตามลำดับ 0 → 12 ได้ผลลัพธ์ตรงกับโปรเจกต์ปัจจุบันเป๊ะๆ
+อัปเดตสถานะล่าสุด: **6 พฤศจิกายน 2026**
 
-> ⚠️ **นี่คือสแนปช็อตสถานะโปรเจกต์ ณ วันที่เขียน ไม่ใช่เกมที่เสร็จสมบูรณ์แล้ว**
-> ทำครบ 12 ตอนแล้วจะได้หมากรุกที่**เล่นได้จริงครบกติกาสากล** พร้อม AI ที่รู้จักทั้งระบบเลือดและ
-> passive skill, เพลง+เสียงเอฟเฟกต์ (เดิน/ตี/ตาย) ที่คุม volume แยก Music/SFX ได้จากหน้า Settings,
-> ระบบเลือด (HP) แบบแฟนตาซีที่ตีหลายทีถึงตาย พร้อมเอฟเฟกต์ออร่าพลัง/ปะทะ/ตาย และ passive skill
-> เฉพาะตัวของเรือ+ควีน+เบี้ย+ม้า — แต่ยังมีของที่ตั้งใจเว้นไว้ไม่ทำ (background ยังไม่ขยับสมจริง,
-> passive ของบิชอป/คิงยังไม่มี, เสียงคลิก/UI/รุกฆาตยังไม่มี ฯลฯ) ดูรายการเต็มที่
-> **"สิ่งที่คู่มือนี้ยังไม่ครอบคลุม"** ท้ายตอนที่ 12 — ถ้าโค้ดในโปรเจกต์จริงถูกแก้เพิ่มเติมทีหลัง
-> คู่มือนี้อาจไม่ตรงกับล่าสุดอีกต่อไปจนกว่าจะอัปเดต
+คู่มือนี้ประกอบด้วยขั้นตอนสร้างเกมในตอนที่ 0–12 และรายละเอียดการปรับปรุงล่าสุดใน
+[ตอนที่ 13 — ระบบและการแก้ไขล่าสุด](#ตอนที่-13--ระบบและการแก้ไขล่าสุด)
+ตอนที่ 0–12 มีตัวอย่างโค้ดระหว่างพัฒนาและขั้นตอนแก้เพิ่มตามลำดับ จึงไม่ใช่โค้ดฉบับสุดท้ายทุกบล็อก
+เมื่อต้องการใช้งานเวอร์ชันปัจจุบัน ให้ใช้ไฟล์ใน `script/` และ `Scene/` ตามลิงก์ในตอนที่ 13
+โดยเฉพาะระบบสกิล AI, Settings, คะแนน, HUD, เวลาเทิร์น และเสียง ซึ่งมีพฤติกรรมเปลี่ยนจากตัวอย่างเดิม
+
+เกมปัจจุบันรองรับ PVP/PVC, กติกาหมากรุกพร้อมการต่อสู้แบบ HP, Passive/Active Skill,
+AI ที่จำกัดการใช้สกิล, เวลา 30 วินาทีต่อตา, คะแนนตามชนิดหมาก, High Score,
+หน้า Pause/Settings พร้อม fade transition และระบบเสียงแยก Music/SFX
+เสียงตัวละครมีเฉพาะตอนเลือกและตอนตาย; **ถอดเสียงร้องตอนโดนตีออกแล้ว**
 
 ## ลำดับการทำ
 
@@ -28,8 +28,9 @@
 | [8](#ตอนที่-8--ui-ฉากเกม-pause--จบเกม) | Pause menu + `main.gd` | กด Pause / เห็นผลจบเกม |
 | [9](#ตอนที่-9--ai-โหมด-singleplayer) | `chess_ai.gd` + `ai_player.gd` | เล่นกับคอมได้ |
 | [10](#ตอนที่-10--ระบบเสียง-audio-bus--หน้า-settings) | `AudioManager` (Autoload) + Audio Bus + หน้า Settings สไตล์หินรูน | ลาก slider แล้วเสียงเพลง/เอฟเฟกต์เปลี่ยนจริงแบบ real-time |
-| [11](#ตอนที่-11--ระบบเลือด-hp--เอฟเฟกต์การต่อสู้แฟนตาซี) | เลือด (HP) + เอฟเฟกต์ปะทะ/ตาย + SFX + Passive Skill (เรือ/ควีน/เบี้ย/ม้า) + **Active Skill กดใช้เอง (ทุกชนิด)** | กินหมากแล้วแค่เลือดลด ต้องตีซ้ำถึงตายจริง, กดปุ่มสกิลเหนือหัวหมากใช้ท่าพิเศษได้ |
+| [11](#ตอนที่-11--ระบบเลือด-hp--เอฟเฟกต์การต่อสู้แฟนตาซี) | เลือด (HP) + เอฟเฟกต์ปะทะ/ตาย + SFX + Passive Skill (เรือ/ควีน/เบี้ย/ม้า) + **Active Skill กดใช้เอง (ทุกชนิด)** + ซ่อนหลอดเลือดตอน Pause + แผงคะแนนสไตล์รูน + หน้าจอจบเกม VICTORY/LOSE + คะแนน 2 ผู้เล่นโหมด PVP (HIGH SCORE ร่วมกัน) | กินหมากแล้วแค่เลือดลด ต้องตีซ้ำถึงตายจริง, กดปุ่มสกิลเหนือหัวหมากใช้ท่าพิเศษได้, จบเกมเห็นป้ายผลและคะแนน |
 | [12](#ตอนที่-12--ตรวจงานครั้งสุดท้าย) | เช็คลิสต์ + แก้ปัญหาที่พบบ่อย | — |
+| [13](#ตอนที่-13--ระบบและการแก้ไขล่าสุด) | สมดุล AI, HUD, คะแนน, เวลา, Settings, เสียง และชุดทดสอบล่าสุด | ใช้ตรวจสถานะปัจจุบัน |
 
 ---
 
@@ -430,7 +431,8 @@ class_name ChessRules
 ## รองรับ: เดินตามชนิดหมาก, กิน, รุก (check), ห้ามเดินให้ตัวเองถูกรุก,
 ##         castling, en passant, promotion, รุกฆาต, อับ (stalemate),
 ##         หมากไม่พอชนะ (insufficient material), กฎ 50 ตา
-## ยังไม่รองรับ: เสมอจากการเดินซ้ำ 3 ครั้ง (threefold repetition)
+## เสมอจากการเดินซ้ำ 3 ครั้ง (threefold repetition): ต้องจำประวัติตำแหน่ง ทำที่ Board.gd (ดูตอนที่ 11.35)
+## โดยใช้ position_key() ของไฟล์นี้ (เพิ่มในตอนที่ 11.35)
 
 const COLS := 8
 const ROWS := 8
@@ -4624,15 +4626,12 @@ signal ทั้งหมดใน `_ready()` ไม่ error และการ
 | เล่นโหมด PVC จนชนะ AI | `games_won` เพิ่มขึ้น 1, ถ้าครบ 10 ครั้งจะได้ achievement "Champion" |
 | เล่นโหมด PVP จนจบเกม | `games_played` เพิ่มขึ้นแต่ `games_won`/`games_lost` ไม่ขยับ (ไม่มีฝ่าย "ผู้เล่น" ตายตัว) |
 
-> **ยังไม่ได้ทำ (ต่อยอดได้ทีหลัง):** ยังไม่มีหน้าจอ "ดูสถิติทั้งหมด" (แค่มี toast ตอนปลดล็อกใหม่
-> เท่านั้น) — เพิ่มได้โดยสร้างฉากใหม่คล้าย Settings (ตอนที่ 10.5) แสดงค่าจาก `StatsManager` ตรงๆ,
-> ยังไม่เก็บ "สกิลที่ใช้บ่อยสุด" แยกตามชนิดหมาก (มีแค่ยอดรวม `total_skills_used`)
+> **หมายเหตุ:** ยังไม่เก็บ "สกิลที่ใช้บ่อยสุด" แยกตามชนิดหมาก (มีแค่ยอดรวม `total_skills_used`) และไม่มีหน้าจอ
+> "ดูสถิติทั้งหมด" (เคยทำแล้วเอาออกภายหลัง — ดูหมายเหตุท้าย 11.38)
 
-> **เอาออกแล้ว:** เดิมตอนที่ 11.19 ในนี้เคยเป็น AI Difficulty slider ในหน้า Settings (ย้าย
-> `SEARCH_DEPTH` ไปเก็บที่ `GameManager.ai_difficulty` แบบปรับได้/persist ลงไฟล์) — ฟีเจอร์นี้ถูก
-> ถอดออกจากโปรเจกต์แล้วทั้งหมด กลับไปใช้ `const SEARCH_DEPTH := 2` แบบตายตัวใน `ai_player.gd`
-> เหมือนเดิม (ลบ `ai_difficulty`/`set_ai_difficulty()`/`_load_difficulty()` ออกจาก `game_manager.gd`,
-> ลบ `difficulty_slider`/`difficulty_label` ออกจาก `settings.gd`)
+> **ทำใหม่แล้ว:** AI Difficulty ที่เคยถอดออกจากตอนนี้ ทำกลับมาใหม่ในตอนที่ 11.38 (EASY/NORMAL/HARD
+> เก็บที่ `GameManager.ai_difficulty` เซฟลงไฟล์ ปุ่มสร้างด้วยโค้ดใน `settings.gd`) — โค้ด `const SEARCH_DEPTH := 2`
+> ที่แสดงในตอน 9, 11.20, 11.26 เป็นเวอร์ชันก่อนหน้า ปัจจุบัน `ai_player.gd` เรียก `GameManager.ai_search_depth()` แทน
 
 ### 11.20 AI ประเมินเชิงตำแหน่ง (Positional Evaluation)
 
@@ -5456,6 +5455,516 @@ func _hide_pause_menu() -> void:
 | สังเกตระหว่าง fade ทั้งสองทาง | เกมยัง `paused = true` ตลอดช่วง fade แต่แอนิเมชันยังขยับต่อได้ปกติ ไม่ค้าง |
 | เล่นจนจบเกม (ชนะ/แพ้/อับ) | หน้าจอผลเฟดเข้าเหมือนกับตอนกด Pause |
 
+### 11.29 ซ่อนหลอดเลือดตอนเปิดเมนู Pause
+
+หลอดเลือดกับจุดสีเหลือง (passive indicator) ถูกวาดอยู่บนตัวหมากเอง ตอนเปิดเมนู Pause หรือหน้าจอ
+จบเกม มันเลยยังโผล่ทับเมนูอยู่ — ซ่อนมันทุกครั้งที่เมนูแสดง แล้วคืนให้ตอนปิดเมนู
+
+**STEP 1 — แก้ `script/chess_piece.gd`**
+
+1. หาบรรทัด `var max_hp: float = BASE_HP` แล้วเพิ่มตัวแปรนี้ไว้**เหนือ**บรรทัดนั้น:
+```gdscript
+## เปิดตอนเมนู pause แสดงอยู่ — ซ่อนหลอดเลือดและไอคอนพาสซีฟของทุกตัว
+static var hide_bars: bool = false
+```
+2. หาฟังก์ชัน `_draw()` แล้วแก้เงื่อนไข guard บรรทัดแรก:
+```gdscript
+func _draw() -> void:
+	if texture == null or max_hp <= 0.0 or hide_bars:
+		return
+```
+
+**STEP 2 — แก้ `script/main.gd`**
+
+1. ใน `_ready()` เพิ่มบรรทัดนี้ (ก่อน `pause_menu.visible = false`):
+```gdscript
+	ChessPiece.hide_bars = false  # static ค้างข้ามฉาก — กด Restart/กลับเมนูตอน pause ไม่งั้นหลอดเลือดหายถาวร
+```
+2. เพิ่มฟังก์ชันนี้ (ใกล้ `_show_pause_menu()`):
+```gdscript
+## ซ่อน/แสดงหลอดเลือดบนตัวหมากทุกตัว — _process ของหมากหยุดตอน paused เลยต้องสั่งวาดใหม่เอง
+func _set_piece_bars_hidden(hidden: bool) -> void:
+	ChessPiece.hide_bars = hidden
+	var pieces := board.get_node_or_null("Pieces")
+	if pieces == null:
+		return
+	for piece in pieces.get_children():
+		piece.queue_redraw()
+```
+3. เรียกใช้ในฟังก์ชันจาก 11.28 — บรรทัดแรกของ `_show_pause_menu()` เติม `_set_piece_bars_hidden(true)` และ
+บรรทัดแรกของ `_hide_pause_menu()` เติม `_set_piece_bars_hidden(false)`:
+```gdscript
+func _show_pause_menu() -> void:
+	_set_piece_bars_hidden(true)
+	pause_menu.visible = true
+	# ...ส่วนที่เหลือเหมือนเดิม
+
+func _hide_pause_menu() -> void:
+	_set_piece_bars_hidden(false)
+	# ...ส่วนที่เหลือเหมือนเดิม
+```
+
+> ⚠️ **ทำไมต้องรีเซ็ตใน `_ready()`:** `static var` อยู่ข้ามการโหลดฉาก ถ้ากด Restart หรือ Main Menu
+> ตอนเมนูเปิดอยู่ ค่า `hide_bars` จะยังเป็น `true` ในเกมถัดไป หลอดเลือดจะหายไปทั้งเกม
+> `queue_redraw()` ต้องสั่งเองเพราะตอน `paused` ฟังก์ชัน `_process()` ของหมาก (ที่วาดใหม่ทุกเฟรม) หยุดทำงาน
+
+### 11.30 เมนู Pause ต้องอยู่บนสุดของ UI
+
+ลำดับ node ใน `CanvasLayer` คือลำดับการวาด — node ท้ายสุดวาดทับ node อื่น แผงคะแนน/เวลา/จำนวนหมากที่
+อยู่ใต้ `PauseMenu` ในแท็บ Scene จึงถูกวาดทับฉากมืด (สว่างกว่าที่ควร) แก้โดยดัน `PauseMenu` ไปท้ายสุดใน
+`_ready()` ของ `main.gd`:
+```gdscript
+	$UI.move_child(pause_menu, -1)  # ลำดับ node ท้ายสุด = วาดทับแผงคะแนน/เวลา/จำนวนหมากทั้งหมด
+```
+ถ้ามีโค้ดเพิ่ม node ใหม่เข้า `$UI` ทีหลัง (เช่นแผงของผู้เล่น 2 ใน 11.33) ต้องเรียกบรรทัดนี้ซ้ำอีกรอบ
+
+### 11.31 แผงคะแนนสไตล์รูน (HUD)
+
+แผง SCORE ใช้กรอบ + ป้ายภาพ + ตัวเลขเรืองแสงสร้างจากรูปเลขแต่ละหลัก แทน `Label` ธรรมดา
+
+**asset ที่ใช้** (อยู่ในโปรเจกต์ ห้ามลบ)
+
+| ไฟล์ | ใช้ทำอะไร |
+|---|---|
+| `asset/frames/frame_timer.png` | กรอบแผง SCORE / HIGH SCORE / เวลา |
+| `asset/labels/score.png` | ป้ายคำว่า SCORE (ตัดด้วย `AtlasTexture` ในฉาก) |
+| `asset/digits/0.png` … `9.png` | ตัวเลขเรืองแสงทีละหลัก |
+| `asset/ui/components/fonts/runic_font.fnt` + `.png` | ฟอนต์บิตแมปรูน (A-Z, ตัวเลข) ใช้กับข้อความ HUD ทั้งหมด |
+
+**โครง node ของแผง SCORE (`Scene/main.tscn`)**
+```
+UI/ScorePanel            Panel (mouse_filter = Ignore, StyleBoxEmpty)
+├── Frame2               TextureRect   กรอบ (texture = frame_timer.png)
+│   ├── Digits           HBoxContainer แถวตัวเลข (alignment = Center)
+│   └── Title            TextureRect   ป้าย SCORE (AtlasTexture ของ score.png)
+└── Label                Label (visible = false)   เก็บค่าคะแนนเป็นข้อความ — โค้ดและเทสต์ยังอ่านจากตรงนี้
+```
+
+**STEP — แก้ `script/main.gd`**
+```gdscript
+func _update_score_label() -> void:
+	score_label.text = "%02d" % _score
+	_show_score_digits("%04d" % _score, $UI/ScorePanel/Frame2/Digits)  # อย่างน้อย 4 หลัก คะแนนมากกว่านี้ก็ยังพอดีแถว
+	high_score_label.text = "%02d" % StatsManager.high_score
+
+## แสดงคะแนนด้วยรูปเลขรูนเรืองแสง (asset/digits) แทนตัวอักษร — score_label ยังเก็บข้อความไว้เป็นค่าจริง
+func _show_score_digits(text: String, row: HBoxContainer) -> void:
+	for child in row.get_children():
+		row.remove_child(child)
+		child.queue_free()
+	for ch in text:
+		var digit := TextureRect.new()
+		digit.texture = load("res://asset/digits/%s.png" % ch)
+		digit.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		digit.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		digit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		digit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		digit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(digit)
+```
+`remove_child()` ก่อน `queue_free()` เพื่อให้จำนวนหลักเก่าหายไปทันที ไม่ปนกับหลักใหม่ในเฟรมเดียวกัน
+
+> ⚠️ **ฟอนต์หายแล้วข้อความหายทั้ง HUD:** `main.tscn` อ้างฟอนต์ผ่าน path ใน `ext_resource` ถ้า path ผิด
+> (เช่นชี้ไป `asset/fonts/` ที่ไม่มีอยู่) ฟอนต์จะเป็น null แล้ว Label ทุกอันที่ใช้ฟอนต์นั้นมองไม่เห็นข้อความ
+> ต้องให้ path ตรงกับที่ไฟล์อยู่จริง (`asset/ui/components/fonts/runic_font.fnt`)
+
+### 11.32 หน้าจอจบเกม: ป้าย VICTORY / LOSE + แถวคะแนน
+
+ตอนเกมจบ แสดงป้ายภาพใหญ่เหนือข้อความผล และแถว SCORE / HIGH SCORE ตัวใหญ่แทนบรรทัดข้อความเล็ก
+เมนู Pause ปกติไม่เปลี่ยน เพราะส่วนที่เพิ่มถูกซ่อนไว้จนกว่าเกมจะจบ
+
+**asset:** `asset/wictory.png` (VICTORY — ชื่อไฟล์สะกดตามที่มีอยู่จริง) และ `asset/loose.png` (LOSE) เป็นภาพ
+พื้นหลังโปร่งใส เหมาะกับเมนูสีเข้ม
+
+**STEP 1 — ค่าคงที่และตัวแปรใน `script/main.gd`**
+```gdscript
+const VICTORY_BANNER := preload("res://asset/wictory.png")
+const DEFEAT_BANNER := preload("res://asset/loose.png")
+
+var _end_banner: TextureRect
+var _end_score_row: HBoxContainer
+var _end_score_value: Label
+var _end_high_value: Label
+```
+
+**STEP 2 — เรียกสร้างส่วนจบเกมใน `_ready()`** (ต่อจาก `result_label.text = ""`):
+```gdscript
+	_build_end_screen()
+```
+
+**STEP 3 — ฟังก์ชันสร้างและแสดง**
+```gdscript
+## สร้างส่วนหน้าจอจบเกม (ป้าย WIN/LOSE + แถวคะแนน) แทรกเหนือ/ใต้ข้อความผลเกมใน PausePanel
+## ซ่อนไว้ตลอดจนกว่าเกมจะจบ — เมนู pause ปกติจึงไม่เปลี่ยน
+func _build_end_screen() -> void:
+	var box: VBoxContainer = $UI/PauseMenu/PausePanel/VBoxContainer
+	_end_banner = TextureRect.new()
+	_end_banner.custom_minimum_size = Vector2(0, 300)
+	_end_banner.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_end_banner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_end_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_end_banner.visible = false
+	box.add_child(_end_banner)
+	box.move_child(_end_banner, 0)
+
+	var font: Font = load("res://asset/ui/components/fonts/runic_font.fnt")
+	_end_score_row = HBoxContainer.new()
+	_end_score_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_end_score_row.add_theme_constant_override("separation", 70)
+	_end_score_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_end_score_row.visible = false
+	_end_score_value = _add_score_column(_end_score_row, "SCORE", Color(0.65, 0.94, 1.0), font)
+	_end_high_value = _add_score_column(_end_score_row, "HIGH SCORE", Color(1.0, 0.85, 0.46), font)
+	box.add_child(_end_score_row)
+	box.move_child(_end_score_row, result_label.get_index() + 1)
+
+	result_label.add_theme_font_size_override("font_size", 28)
+	result_label.add_theme_color_override("font_outline_color", Color(0.015, 0.025, 0.05))
+	result_label.add_theme_constant_override("outline_size", 4)
+
+## 1 คอลัมน์ = ชื่อหัวข้อตัวเล็ก + ตัวเลขตัวใหญ่ ส่งค่า Label ของตัวเลขกลับไปให้อัปเดตทีหลัง
+func _add_score_column(row: HBoxContainer, title: String, color: Color, font: Font, scale: float = 1.0) -> Label:
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override("separation", 0)
+	var title_label := Label.new()
+	title_label.text = title
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var value_label := Label.new()
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for label in [title_label, value_label]:
+		label.add_theme_font_override("font", font)
+		label.add_theme_color_override("font_color", color)
+		label.add_theme_color_override("font_outline_color", Color(0.015, 0.025, 0.05))
+		label.add_theme_constant_override("outline_size", 4)
+	title_label.add_theme_font_size_override("font_size", int(26 * scale))
+	value_label.add_theme_font_size_override("font_size", int(56 * scale))
+	column.add_child(title_label)
+	column.add_child(value_label)
+	row.add_child(column)
+	return value_label
+
+func _show_end_screen(player_won: bool, decisive: bool) -> void:
+	if decisive:  # เสมอ (อับ/หมากไม่พอ/50 ตา) ไม่แสดงป้าย
+		_end_banner.texture = VICTORY_BANNER if player_won else DEFEAT_BANNER
+		_end_banner.visible = true
+	_end_score_value.text = str(_score)
+	_end_high_value.text = str(StatsManager.high_score)
+	_end_score_row.visible = true
+	# ป้าย + แถวคะแนนทำให้สูงกว่าเมนู pause ปกติ — ขยายแผงให้พอดีปุ่มทั้ง 3
+	var panel: Panel = $UI/PauseMenu/PausePanel
+	panel.custom_minimum_size = Vector2(600, 880)
+	panel.offset_top = -440.0
+	panel.offset_bottom = 440.0
+```
+
+**STEP 4 — เรียกใน `_on_game_ended()`** (แทนบรรทัดที่เคยต่อข้อความคะแนนท้าย `result_label.text`):
+```gdscript
+	var player_won := result in ["checkmate", "timeout"] and (GameManager.game_mode != "PVC" or winner == ChessPiece.Team.WHITE)
+	result_label.text = _result_text(result, winner)   # ข้อความผลเกมอย่างเดียว ไม่ต่อท้ายคะแนนแล้ว
+	_show_end_screen(player_won, result in ["checkmate", "timeout"])
+	resume_button.visible = false
+	_show_pause_menu()
+	get_tree().paused = true
+	AudioManager.play_sfx(SFX_VICTORY if player_won else SFX_DEFEAT)
+```
+
+> หมายเหตุ: โหมด PVC ถ้าฝ่ายดำ (AI) ชนะ ถือว่าผู้เล่นแพ้ → ป้าย LOSE ส่วนโหมด PVP รุกฆาตหรือหมดเวลาฝั่งไหน
+> ชนะก็แสดงป้าย VICTORY
+
+### 11.33 โหมด PVP นับคะแนน 2 ผู้เล่น (HIGH SCORE ใช้ร่วมกัน)
+
+โหมด PVP ผู้เล่น 1 = ฝ่ายขาว, ผู้เล่น 2 = ฝ่ายดำ — ต่างคนต่างมีคะแนนของเกมนี้ ส่วน HIGH SCORE เป็นค่าเดียว
+ที่ทั้งสองคนใช้ร่วมกัน (คะแนนของใครสูงกว่าสถิติก็ทำลายสถิติเดียวกัน) โหมด PVC ไม่เปลี่ยน ฝ่ายดำคือ AI ไม่มีคะแนน
+
+**คะแนนต่อการกินหมาก** (ค่าคงที่ใน `main.gd`)
+```gdscript
+const CAPTURE_POINTS := {
+	ChessPiece.Kind.PAWN: 100,
+	ChessPiece.Kind.KNIGHT: 300,
+	ChessPiece.Kind.BISHOP: 300,
+	ChessPiece.Kind.ROOK: 500,
+	ChessPiece.Kind.QUEEN: 900,
+}
+const VICTORY_BONUS := 1000   # ฝ่ายที่ชนะด้วยรุกฆาตหรือหมดเวลาได้โบนัสครั้งเดียว
+```
+
+**STEP 1 — ตัวแปรและตัวช่วยใน `script/main.gd`**
+```gdscript
+var _score: int = 0     # ผู้เล่น 1 = ฝ่ายขาว (และคะแนนเดียวของโหมด PVC)
+var _score_p2: int = 0  # ผู้เล่น 2 (ฝ่ายดำ) — นับเฉพาะโหมด PVP
+var _p2_score_digits: HBoxContainer
+var _end_score_p2_value: Label
+var _end_high_row: HBoxContainer
+
+func _is_pvp() -> bool:
+	return GameManager.game_mode == "PVP"
+```
+
+**STEP 2 — ให้คะแนนตามฝ่ายที่กิน** (แก้ `_award_score()` และจุดเรียกใน `_on_piece_attacked()`)
+```gdscript
+func _award_score(points: int, side: int = ChessPiece.Team.WHITE) -> void:
+	if points <= 0:
+		return
+	if side == ChessPiece.Team.BLACK:
+		_score_p2 += points
+		StatsManager.record_score(_score_p2)  # HIGH SCORE ใช้ร่วมกัน
+	else:
+		_score += points
+		StatsManager.record_score(_score)
+	_update_score_label()
+```
+ใน `_on_piece_attacked()` ตรงบล็อก `if killed:`:
+```gdscript
+	if killed:
+		if attacker.side == ChessPiece.Team.WHITE and victim.side == ChessPiece.Team.BLACK:
+			StatsManager.record_kill()
+			_award_score(CAPTURE_POINTS.get(victim.piece_kind, 0), ChessPiece.Team.WHITE)
+		elif _is_pvp() and attacker.side == ChessPiece.Team.BLACK and victim.side == ChessPiece.Team.WHITE:
+			_award_score(CAPTURE_POINTS.get(victim.piece_kind, 0), ChessPiece.Team.BLACK)
+		_update_team_counts()
+```
+และโบนัสชนะใน `_on_game_ended()` (แทนเงื่อนไขเดิมที่ให้เฉพาะฝ่ายขาว):
+```gdscript
+	if result in ["checkmate", "timeout"]:
+		if winner == ChessPiece.Team.WHITE:
+			_award_score(VICTORY_BONUS, ChessPiece.Team.WHITE)
+		elif _is_pvp():
+			_award_score(VICTORY_BONUS, ChessPiece.Team.BLACK)
+```
+
+**STEP 3 — แผงคะแนนผู้เล่น 2 บนหน้าจอ**
+
+แผงของผู้เล่น 2 เป็น node จริงใน `Scene/main.tscn` (ซ่อนไว้เป็นค่าเริ่มต้น) เพื่อให้ลากจัดตำแหน่งใน editor ได้:
+```
+UI/ScorePanel                    ผู้เล่น 1 (ฝั่งซ้าย)
+└── Caption                      Label "PLAYER 1" (visible = false — โค้ดเปิดเฉพาะ PVP)
+UI/ScorePanelP2                  ผู้เล่น 2 (ฝั่งขวาใต้ TimerPanel) visible = false — โค้ดเปิดเฉพาะ PVP
+├── Frame2 (TextureRect)         โครงเดียวกับ ScorePanel/Frame2
+│   ├── Digits (HBoxContainer)   แถวตัวเลขของผู้เล่น 2
+│   └── Title (TextureRect)      ป้าย SCORE ย้อมสีส้ม (modulate)
+└── Caption                      Label "PLAYER 2" สีส้ม
+```
+สร้างได้โดย Duplicate (`Ctrl+D`) แผง `ScorePanel` แล้วเปลี่ยนชื่อ/ตำแหน่ง/สี จากนั้นใน `_ready()` ต่อจาก `_build_end_screen()`:
+```gdscript
+	_setup_pvp_hud()
+```
+```gdscript
+## โหมด PVP: แสดงแผงคะแนนผู้เล่น 2 (node `UI/ScorePanelP2` ที่อยู่ใน main.tscn — ลากจัดตำแหน่งใน editor ได้)
+## กับป้าย PLAYER 1 บนแผงของผู้เล่น 1 โหมดอื่นซ่อนทั้งคู่ HIGH SCORE ไม่แยก ใช้แผงเดียวร่วมกัน
+func _setup_pvp_hud() -> void:
+	var pvp := _is_pvp()
+	$UI/ScorePanelP2.visible = pvp
+	$UI/ScorePanel/Caption.visible = pvp
+	if pvp:
+		_p2_score_digits = $UI/ScorePanelP2/Frame2/Digits
+```
+และให้ `_update_score_label()` (จาก 11.31) อัปเดตแถวตัวเลขของผู้เล่น 2 ด้วย ต่อท้ายฟังก์ชัน:
+```gdscript
+	if _p2_score_digits != null:
+		_show_score_digits("%04d" % _score_p2, _p2_score_digits)
+```
+
+**STEP 4 — หน้าจอจบเกมโหมด PVP** แก้ `_build_end_screen()` ตรงสร้างคอลัมน์ (แทน 2 บรรทัด `_end_score_value`/`_end_high_value` ของ 11.32):
+```gdscript
+	var pvp := _is_pvp()
+	_end_score_value = _add_score_column(_end_score_row, "P1 SCORE" if pvp else "SCORE", Color(0.65, 0.94, 1.0), font)
+	if pvp:
+		# แถวบน = คะแนนเกมนี้ของทั้ง 2 คน, แถวล่าง = HIGH SCORE ตัวเดียวที่ใช้ร่วมกัน (ตัวเล็กกว่า)
+		_end_score_p2_value = _add_score_column(_end_score_row, "P2 SCORE", Color(1.0, 0.7, 0.45), font)
+		_end_high_row = HBoxContainer.new()
+		_end_high_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_end_high_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_end_high_row.visible = false
+		_end_high_value = _add_score_column(_end_high_row, "HIGH SCORE", Color(1.0, 0.85, 0.46), font, 0.8)
+		box.add_child(_end_high_row)
+		box.move_child(_end_high_row, result_label.get_index() + 1)
+	else:
+		_end_high_value = _add_score_column(_end_score_row, "HIGH SCORE", Color(1.0, 0.85, 0.46), font)
+	box.add_child(_end_score_row)
+	box.move_child(_end_score_row, result_label.get_index() + 1)
+```
+และ `_show_end_screen()` ส่วนที่เติมสำหรับ PVP:
+```gdscript
+	var half_height := 440.0
+	if _is_pvp():
+		_end_score_p2_value.text = str(_score_p2)
+		_end_high_row.visible = true
+		half_height = 490.0  # แถว HIGH SCORE เพิ่มอีกแถว
+	var panel: Panel = $UI/PauseMenu/PausePanel
+	panel.custom_minimum_size = Vector2(600, half_height * 2.0)
+	panel.offset_top = -half_height
+	panel.offset_bottom = half_height
+```
+
+> ⚠️ **สีทองและสีส้มของข้อความออกมาเป็นเขียว:** ฟอนต์รูน `runic_font.fnt` มีสีฟ้าอยู่ในตัวภาพ ค่า `font_color`
+> ถูกคูณทับ ฟ้า × ส้ม/ทอง = เขียว ถ้าต้องการสีทองจริงต้องใช้ฟอนต์สีขาวหรือเปลี่ยนวิธีย้อมสี
+
+### 11.34 เทสต์อัตโนมัติ (`tests/`)
+
+โฟลเดอร์ `tests/` เก็บสคริปต์ที่รันแบบ headless ได้ ใช้ตรวจว่าแก้โค้ดแล้วของเดิมไม่พัง (อ่าน `FAILURES=0` ตอนท้าย):
+```bash
+godot --headless --path . --script res://tests/score_hud.gd
+```
+| ไฟล์ | ตรวจอะไร |
+|---|---|
+| `score_hud.gd` | แผงคะแนน/จำนวนหมากแสดงและไม่บังการคลิกกระดาน, คะแนนต่อการกิน, สถิติสูงสุดเซฟลงไฟล์, โหมด PVP ฝ่ายดำกินเรือได้ 500 และทำลายสถิติร่วม |
+| `weighted_scoring.gd` | ค่าคะแนนต่อชนิดหมาก + โบนัสชนะ แสดงบนหน้าจอผล (อ่านจาก `_end_score_value`) |
+| `pause_settings.gd`, `settings_navigation.gd`, `settings_transition.gd` | ปุ่ม Settings ในเมนู Pause และการเปลี่ยนฉาก |
+| `turn_timer.gd` | ตัวจับเวลาต่อตา |
+| `regressions.gd`, `ai_skill_balance.gd` | กติกา/สกิล/AI |
+| `new_features.gd` | ซ้ำตา 3 ครั้ง, HIGH SCORE แยกโหมด, NEW RECORD!, ระดับความยาก AI ใน Settings (ดู 11.35–11.38) |
+
+> `--script` ในโหมดเช็คทีละไฟล์ (`--check-only`) จะฟ้อง `Identifier not found: GameManager` ฯลฯ ทั้งที่ไม่ใช่บั๊ก เพราะ
+> Autoload ไม่ถูกโหลดในโหมดนั้น — ให้ใช้รันเทสต์ด้วย `--script` ธรรมดาตามด้านบนแทน
+
+### 11.35 เสมอเมื่อซ้ำตำแหน่งเดิม 3 ครั้ง (Threefold Repetition)
+
+เดิมตั้งใจไม่ทำ ตอนนี้เพิ่มแล้ว: ถ้าตำแหน่งเดิมเกิดขึ้นครบ 3 ครั้งตลอดเกม เกมจบเป็นเสมอ (`result = "threefold_repetition"`,
+`winner = -1`) กลไกนี้ต้องจำประวัติ จึงทำที่ `Board.gd` ไม่ใช่ใน `ChessRules.status()` ที่ไม่มี state
+
+**ตำแหน่งเดียวกัน** = หมากชนิด/ฝ่าย/**เลือด**เท่ากันทุกช่อง + ฝ่ายที่ถึงตาเดียวกัน + ช่อง en passant เดียวกัน + สิทธิ์ castling เดิม
+เลือดต้องอยู่ในคีย์เพราะเกมนี้มีระบบ HP — การโจมตีไม่ตายไม่ขยับหมากเลย ถ้าไม่นับเลือดจะถูกมองเป็นตำแหน่งซ้ำผิดๆ
+
+**STEP 1 — `script/chess_rules.gd`** เพิ่มฟังก์ชันสร้างคีย์ (วางเหนือ `status()`):
+```gdscript
+static func position_key(state: Array, side_to_move: int, ep_target: Vector2i) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for row in range(ROWS):
+		for col in range(COLS):
+			var piece: ChessPiece = state[row][col]
+			if piece == null:
+				continue
+			var castle_flag := 0
+			if (piece.piece_kind == ChessPiece.Kind.KING or piece.piece_kind == ChessPiece.Kind.ROOK) and not piece.has_moved:
+				castle_flag = 1
+			parts.append("%d,%d:%d%d%d:%d" % [col, row, piece.piece_kind, piece.side, castle_flag, int(round(piece.hp))])
+	return "%d|%d,%d|%s" % [side_to_move, ep_target.x, ep_target.y, ";".join(parts)]
+```
+
+**STEP 2 — `script/Board.gd`**
+1. ตัวแปรกับค่าคงที่ (ใกล้ `var animating`):
+```gdscript
+const REPETITION_LIMIT := 3
+var position_counts: Dictionary = {}
+```
+2. ใน `_reset_game_state()` เพิ่ม `position_counts.clear()`
+3. ใน `_evaluate_status()` ต่อจาก `var result: String = state.result`:
+```gdscript
+	if result == "":
+		var key := ChessRules.position_key(board_state, side_to_move, en_passant_target)
+		position_counts[key] = int(position_counts.get(key, 0)) + 1
+		if position_counts[key] >= REPETITION_LIMIT:
+			result = "threefold_repetition"
+```
+(ฟังก์ชันนี้ถูกเรียกท้ายทุกตา — เดิน ใช้สกิล หมดเวลา — จึงนับครบทุกกรณี ส่วน `game_ended` ที่ตามมาส่ง winner = -1 อยู่แล้ว
+เพราะมีผู้ชนะเฉพาะ `checkmate`)
+
+**STEP 3 — `script/main.gd`** เพิ่มข้อความผลใน `_result_text()` ก่อน `_:`
+```gdscript
+		"threefold_repetition":
+			return "ซ้ำตำแหน่งเดิม 3 ครั้ง — เสมอ"
+```
+หน้าจอจบเกมถือเป็น "ไม่มีผู้ชนะ" เหมือนอับ/50 ตา (ไม่แสดงป้าย VICTORY/LOSE)
+
+### 11.36 HIGH SCORE แยกตามโหมด
+
+เดิมโหมดเล่นกับ AI (PVC) และ 2 ผู้เล่น (PVP) ใช้ HIGH SCORE ค่าเดียวกัน — แยกเป็นโหมดละค่า (ใน PVP ผู้เล่นทั้งสองยังใช้ค่าเดียวกัน)
+
+**`script/stats_manager.gd`**
+```gdscript
+var high_scores: Dictionary = {"PVC": 0, "PVP": 0}
+## high_score = สถิติของโหมดที่กำลังเล่น (GameManager.game_mode) — โค้ดเดิมที่อ่าน/เขียน high_score
+## ตรงๆ (แผงคะแนน, เทสต์) จึงใช้ได้ต่อโดยไม่ต้องแก้ แต่ได้ค่าของโหมดที่ถูกต้องเสมอ
+var high_score: int:
+	get:
+		return int(high_scores.get(GameManager.game_mode, 0))
+	set(value):
+		high_scores[GameManager.game_mode] = value
+```
+`_save()` เขียน `high_score_pvc` / `high_score_pvp` แยกกัน และ `_load()` ย้ายค่า `high_score` ของไฟล์เซฟเก่าเข้า PVC:
+```gdscript
+	var legacy: int = maxi(0, int(config.get_value("stats", "high_score", 0)))
+	high_scores["PVC"] = maxi(0, int(config.get_value("stats", "high_score_pvc", legacy)))
+	high_scores["PVP"] = maxi(0, int(config.get_value("stats", "high_score_pvp", 0)))
+```
+เพิ่ม `games_pvp` (จำนวนเกม PVP ที่เล่นจบ) และให้ `record_game_ended(win, pvp := false)` ไม่นับเกม PVP เป็น "เสมอ"
+(เดิมนับ `games_drawn` ทุกเกม PVP ทำให้สถิติเพี้ยน) — ใน `main.gd` โหมด PVP เรียก `StatsManager.record_game_ended(null, true)`
+
+### 11.37 ข้อความ NEW RECORD! บนหน้าจอจบเกม
+
+ถ้าคะแนนเกมนี้สูงกว่า HIGH SCORE ของโหมดตอน**เริ่มเกม** จะแสดง "NEW RECORD!" กระพริบเหนือแถวคะแนน
+(PVP บอกด้วยว่าผู้เล่นคนไหน: `NEW RECORD! P2`) ต้องจำสถิติตอนเริ่มไว้ก่อน เพราะ `record_score()` อัปเดตสถิติทันทีระหว่างเล่น
+
+**`script/main.gd`**
+```gdscript
+var _end_record_label: Label
+var _record_at_start: int = 0   # ตั้งใน _ready(): _record_at_start = StatsManager.high_score (ก่อน _build_end_screen())
+```
+ใน `_build_end_screen()` สร้าง Label (ฟอนต์เริ่มต้น ไม่ใช้ฟอนต์รูนเพราะไม่มีเครื่องหมาย `!`) วางเหนือแถวคะแนน แล้วใน `_show_end_screen()`:
+```gdscript
+	var record_text := _new_record_text()
+	if record_text != "":
+		_end_record_label.text = record_text
+		_end_record_label.visible = true
+		half_height += 30.0
+		var pulse := create_tween().set_loops()
+		pulse.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)   # ตอนจบเกม tree.paused = true — ต้องให้ tween ทำงานตอน paused ได้
+		pulse.tween_property(_end_record_label, "modulate:a", 0.45, 0.6)
+		pulse.tween_property(_end_record_label, "modulate:a", 1.0, 0.6)
+
+func _new_record_text() -> String:
+	var best := maxi(_score, _score_p2) if _is_pvp() else _score
+	if best <= 0 or best <= _record_at_start:
+		return ""
+	if not _is_pvp():
+		return "NEW RECORD!"
+	return "NEW RECORD! P%d" % (1 if _score >= _score_p2 else 2)
+```
+
+### 11.38 ปรับระดับความยาก AI จาก Settings (EASY / NORMAL / HARD)
+
+เคยทำแล้วถอดออก (ดูหมายเหตุใน 11.19) — ทำใหม่ครั้งนี้สร้างปุ่มด้วยโค้ดทั้งหมด ไม่พึ่ง node ในฉาก จึงไม่เกิดปัญหา "สร้าง node ไม่ครบ"
+
+| ระดับ | ความลึกค้นหา | เวลาคิดตาแรก (วัดจริง) |
+|---|---|---|
+| EASY | 1 | ~10 ms |
+| NORMAL (ค่าเดิม) | 2 | ~125 ms |
+| HARD | 3 | ~1.9 วินาที (ตาหลังๆ ที่หมากเหลือน้อยเร็วขึ้น) |
+
+**`script/game_manager.gd`** — เก็บระดับและเซฟลง `user://game_settings.cfg`:
+```gdscript
+enum AIDifficulty { EASY, NORMAL, HARD }
+const AI_DIFFICULTY_NAMES := ["EASY", "NORMAL", "HARD"]
+const AI_SEARCH_DEPTHS := [1, 2, 3]
+var ai_difficulty: int = AIDifficulty.NORMAL
+
+func _ready() -> void:
+	var config := ConfigFile.new()
+	if config.load(SETTINGS_PATH) == OK:
+		ai_difficulty = clampi(int(config.get_value("ai", "difficulty", AIDifficulty.NORMAL)), 0, AI_SEARCH_DEPTHS.size() - 1)
+
+func set_ai_difficulty(level: int) -> void:
+	ai_difficulty = clampi(level, 0, AI_SEARCH_DEPTHS.size() - 1)
+	var config := ConfigFile.new()
+	config.set_value("ai", "difficulty", ai_difficulty)
+	config.save(SETTINGS_PATH)
+
+func ai_search_depth() -> int:
+	return AI_SEARCH_DEPTHS[ai_difficulty]
+```
+**`script/ai_player.gd`** — ลบ `const SEARCH_DEPTH := 2` แล้วเรียก `GameManager.ai_search_depth()` ทุกครั้งที่จะเดิน:
+```gdscript
+	var action: Dictionary = ChessAI.best_move(board.board_state, AI_SIDE, board.en_passant_target, GameManager.ai_search_depth(), board.ai_skill_moves_remaining <= 0)
+```
+**`script/settings.gd`** — `_build_difficulty_row()` เรียกใน `_ready()` สร้าง `HBoxContainer` ชื่อ `DifficultyRow` (ป้าย `AI LEVEL` + ปุ่ม toggle 3 ปุ่มใน `ButtonGroup`
+ใช้ฟอนต์รูนและ `StyleBoxFlat` ขอบฟ้า) วางที่ (645, 712) ใต้แผงสไลเดอร์ ปุ่ม `pressed` เรียก `GameManager.set_ai_difficulty(level)` ใช้ได้ทั้งหน้า Settings จากเมนูหลักและตอนเปิดซ้อนในเกม
+(มีผลตั้งแต่ตาถัดไปของ AI) เก็บปุ่มไว้ใน `difficulty_buttons` ให้เทสต์อ่านได้
+**`Scene/settings.tscn`** — เลื่อนปุ่ม Quit (`BackButton`) ลงมา `offset_top = 820`, `offset_bottom = 1005` เพื่อเว้นที่ให้แถวใหม่
+
+> **หน้าดูสถิติ (ปุ่ม STATS) ถูกเอาออกแล้ว** — เคยมีฉาก `Scene/stats.tscn` กับปุ่มมุมขวาบนของเมนูหลัก ตอนนี้ไม่มีแล้ว
+> ส่วน `StatsManager` ยังอยู่ เพราะ HIGH SCORE, NEW RECORD! และ achievement ใช้มัน
+
 ---
 
 ## ตอนที่ 12 — ตรวจงานครั้งสุดท้าย
@@ -5471,7 +5980,7 @@ chess-th/
 │   ├── board.tscn               ตอนที่ 5, 6, 7, 9
 │   └── main.tscn                ตอนที่ 5, 8, 10
 ├── script/
-│   ├── game_manager.gd          ตอนที่ 1   [Autoload]
+│   ├── game_manager.gd          ตอนที่ 1, 11.38   [Autoload] โหมดเกม + ระดับความยาก AI
 │   ├── SceneTransition.gd       ตอนที่ 1   [Autoload]
 │   ├── loading.gd               ตอนที่ 2
 │   ├── main_menu.gd             ตอนที่ 3
@@ -5489,19 +5998,33 @@ chess-th/
 │   ├── promote_glow.gd          ตอนที่ 11  แสงพวยพุ่งตอนเบี้ย promote (วาดเอง ไม่ใช้ asset)
 │   ├── click_to_move.gd         ตอนที่ 7, 11   รับ input จากคน + วาดไฮไลต์เต้นจังหวะ + เช็คคลิกปุ่มสกิล/โปรโมท
 │   ├── ai_player.gd             ตอนที่ 9   สั่งเดินแทน AI
-│   ├── main.gd                  ตอนที่ 8, 11   Pause menu + ผลจบเกม + หน้าจอสั่นตามแรงตี + พื้นหลังขยับ
+│   ├── main.gd                  ตอนที่ 8, 11   Pause menu + ผลจบเกม (ป้าย VICTORY/LOSE + คะแนน) + แผงคะแนน/PVP 2 ผู้เล่น + หน้าจอสั่นตามแรงตี + พื้นหลังขยับ
 │   ├── audio_manager.gd         ตอนที่ 10  [Autoload] คุมเพลง/SFX ทั้งเกม
 │   ├── settings.gd              ตอนที่ 10  ต่อ slider/ปุ่มกับ AudioManager
-│   └── stats_manager.gd         ตอนที่ 11  [Autoload] สถิติสะสม + achievement (ไม่ผูก scene node)
+│   └── stats_manager.gd         ตอนที่ 11  [Autoload] สถิติสะสม + achievement + HIGH SCORE ร่วม (ไม่ผูก scene node)
+├── tests/                       ตอนที่ 11.34  สคริปต์เทสต์แบบ headless (score_hud.gd, weighted_scoring.gd, ...)
+├── corner_left.png, corner_right.png   ที่ root — ใช้ใน main.tscn (มุมกรอบจำนวนหมาก)
 └── asset/  (ตอนที่ 0)
-	├── audio/{ชื่อเพลง}.mp3     ตอนที่ 10
-	└── ui/settings_panel.png, settings_grabber.png   ตอนที่ 10 (ถ้าใช้ภาพกรอบสำเร็จรูป)
+	├── audio/{ชื่อเพลง}.mp3, greetings/   ตอนที่ 10, 11
+	├── pieces/                  รูปหมากทุกตัว (piece_spawner.gd โหลดตามชื่อ)
+	├── digits/0.png … 9.png     ตอนที่ 11.31  ตัวเลขเรืองแสงของแผงคะแนน
+	├── frames/frame_timer.png   ตอนที่ 11.31  กรอบแผงคะแนน/เวลา
+	├── labels/score.png         ตอนที่ 11.31  ป้ายคำว่า SCORE
+	├── wictory.png, loose.png   ตอนที่ 11.32  ป้ายชนะ/แพ้ตอนจบเกม
+	└── ui/
+		├── settings_panel.png, settings_grabber.png   ตอนที่ 10
+		├── pause_settings.png, pause_settings_hover.png   ปุ่ม Settings ในเมนู Pause
+		└── components/fonts/runic_font.fnt + .png     ตอนที่ 11.31  ฟอนต์บิตแมปรูนของ HUD
 ```
+
+> asset ชุดอื่นที่เคยมีในโปรเจกต์แต่ไม่มีโค้ด/ฉากใดอ้างถึง (`asset/letters`, `digits_gem`, `icons`, `runes`,
+> `atlases`, `borders`, `asset/ui/components/` ส่วนที่ไม่ใช่ `fonts/`, กรอบ/ป้ายตัวอื่นใน `frames/` `labels/`)
+> ลบทิ้งได้ — ตรวจโดยค้นหา `res://` ใน `Scene/*.tscn` และ `script/*.gd`
 
 > `chess_piece.gd` (ตอนที่ 4), `piece_spawner.gd` (ตอนที่ 6), `Board.gd` (ตอนที่ 5),
 > `click_to_move.gd` (ตอนที่ 7), `main.gd` (ตอนที่ 8) และ `chess_ai.gd` (ตอนที่ 9) ไม่ใช่ไฟล์ใหม่
 > แต่ถูกแก้เพิ่มเติมหลายรอบในตอนที่ 11 (ระบบเลือด/เอฟเฟกต์/passive/active skill/animation เสริม) —
-> ดูเนื้อหาตอนที่ 11 ทั้งหมด (11.1–11.24) สำหรับโค้ดเวอร์ชันล่าสุด
+> ดูเนื้อหาตอนที่ 11 ทั้งหมด (11.1–11.38) สำหรับโค้ดเวอร์ชันล่าสุด
 
 ไฟล์ scene เพิ่มเติมจากตอนที่ 10: `Scene/settings.tscn`
 
@@ -5550,6 +6073,14 @@ chess_piece.gd  ←  chess_rules.gd  ←  chess_ai.gd
 | แก้ .tscn/.gd จากภายนอก (เช่นด้วยสคริปต์/เครื่องมืออื่น) แล้วค่าหายกลับไปเป็นของเดิม | Godot editor ที่เปิดค้างอยู่ save ทับตอนสลับกลับไปที่ editor | ปิด editor ก่อนแก้ไฟล์จากภายนอก หรือ reload scene ใน editor หลังแก้เสร็จเสมอ |
 | หมากรุกดูรก/สับสน หลังกินหมากยังยืนอยู่ 2 ตัวซ้อนกันในช่องเดียว | ลืมแยกกรณี "โจมตีไม่ตาย" (`piece_moved = false`) ออกจาก "โจมตีตาย" ใน `try_move()` — ถ้าอัปเดต `board_state` แม้ตอนไม่ตาย จะมี 2 ตัวชนกันในช่องเดียว | ต้อง guard ทุกจุดที่แก้ `board_state`/`has_moved`/promotion/en-passant-target ด้วย `if piece_moved:` (ดูตอนที่ 11.3) |
 | หลอดเลือด (HP bar) ยืด/บิดเบี้ยวตอนหมากขยายเวลาเลือกหรืออยู่คนละแถว | วาดใน `_draw()` โดยไม่ได้หารด้วย `scale` ปัจจุบันของ node | หารความกว้าง/สูง/ระยะห่างของหลอดด้วย `scale.x`/`scale.y` ทุกจุด (ดู `chess_piece.gd` ตอนที่ 11.1) |
+| ข้อความใน HUD (คะแนน/เวลา/จำนวนหมาก) หายหมดทั้งที่โหลดฉากได้ | path ของฟอนต์รูนใน `main.tscn` ผิด (ไฟล์ไม่มีอยู่) ฟอนต์เป็น null | ให้ `ext_resource` ชี้ไป `res://asset/ui/components/fonts/runic_font.fnt` (ดู 11.31) |
+| หลอดเลือดหายถาวรหลังกด Restart ตอนเมนู Pause เปิดอยู่ | `ChessPiece.hide_bars` เป็น `static` ค้างข้ามการโหลดฉาก | รีเซ็ต `ChessPiece.hide_bars = false` ใน `_ready()` ของ `main.gd` (ดู 11.29) |
+| แผงคะแนนสว่างทับฉากมืดของเมนู Pause | `PauseMenu` อยู่ก่อนแผงอื่นใน `$UI` ลำดับวาดเลยต่ำกว่า | `$UI.move_child(pause_menu, -1)` ใน `_ready()` และเรียกซ้ำหลังเพิ่ม node ใหม่เข้า `$UI` (ดู 11.30) |
+| ข้อความในฟอนต์รูนขึ้นเป็นกล่องสี่เหลี่ยมแปลกๆ (เช่น `NEW RECORD!`, `25%`, `4/5`) | ฟอนต์รูนบิตแมปไม่มีเครื่องหมาย `! % /` และอักษรไทย | ใช้ฟอนต์เริ่มต้นกับข้อความนั้น หรือเลี่ยงด้วยคำ (เช่น `PCT`, `OF`) — ดู 11.37 |
+| จบเกมเสมอแบบซ้ำตาทั้งที่ HP ของหมากต่างกัน | คีย์ตำแหน่งไม่รวมเลือด | ให้ `ChessRules.position_key()` รวม `int(round(piece.hp))` ด้วย (ดู 11.35) |
+| ปรับ HIGH SCORE ในโหมดหนึ่งแล้วอีกโหมดเปลี่ยนตาม | อ่าน/เขียน `high_score` ตัวเดียวแทนที่จะแยกตาม `GameManager.game_mode` | ใช้ `high_scores["PVC"/"PVP"]` ผ่าน property `high_score` (ดู 11.36) |
+| ตัวเลขคะแนน 6 หลักโดนมุมกรอบบัง | ช่องในของกรอบแคบกว่าที่คิด | ใช้ 4 หลัก (`"%04d"`) หรือขยายกรอบ (ดู 11.31) |
+| โหมด PVP ฝ่ายดำกินหมากแล้วคะแนนไม่ขึ้น | `_award_score()` เดิมให้เฉพาะฝ่ายขาว | ส่งฝ่ายที่กินเข้าไปด้วย `_award_score(points, side)` (ดู 11.33) |
 | `Parse Error: Class "X" hides a global script class` | สร้างสคริปต์ใหม่ใน Godot แล้วลืมเปลี่ยนชื่อไฟล์จาก `new_script.gd` (ชื่อ default) ก่อนพิมพ์ `class_name` ลงไป ทำให้มี 2 ไฟล์ประกาศคลาสเดียวกันซ้ำ | หาไฟล์ `new_script.gd` (หรือชื่อ default อื่นๆ) ที่หลงเหลืออยู่ แล้วลบทิ้ง เหลือไว้แค่ไฟล์ที่ตั้งชื่อถูกไฟล์เดียว (ดูตอนที่ 11.8) |
 
 ### สิ่งที่คู่มือนี้ยังไม่ครอบคลุม (ต่อยอดเองได้)
@@ -5557,8 +6088,219 @@ chess_piece.gd  ←  chess_rules.gd  ←  chess_ai.gd
 | หัวข้อ | หมายเหตุ |
 |---|---|
 | **AI ยังไม่มีคะแนน king safety / piece-square table เต็มมาตรฐาน** | มีแค่ `positional_score()` แบบ heuristic ง่ายๆ 2 อย่าง (ตอนที่ 11.20) — ยังไม่เช็คว่าคิงถูกล้อมด้วยหมากป้องกันไหม |
-| **ระดับความยาก AI ปรับจาก Settings ไม่ได้** | เคยทำ (ตอนที่ 11.19 เดิม) แล้วถอดออกเพราะสร้าง node ไม่ครบจนเกม error — กลับไปใช้ `const SEARCH_DEPTH := 2` ตายตัวใน `ai_player.gd` เหมือนเดิม ทำใหม่ได้ทีหลังถ้าอยากได้ (ดูหมายเหตุท้ายตอนที่ 11.20) |
-| **Threefold repetition** | **ตั้งใจไม่ทำ** — ผู้เล่นตัดสินใจว่าเกมนี้ไม่ต้องการกลไกเสมอเพิ่ม เอาแค่ชนะ/แพ้พอ (อับ/หมากไม่พอ/50 ตาที่มีอยู่แล้วยังคงเดิม ไม่ได้ถอดออก แค่ไม่เพิ่มเงื่อนไขเสมอใหม่) |
+| **AI ไม่หลบเลี่ยงการเสมอแบบซ้ำตา** | เพิ่มกฎซ้ำ 3 ครั้งแล้ว (ตอนที่ 11.35) แต่ `chess_ai.gd` ไม่รู้จักประวัติตำแหน่ง — ถ้า AI ได้เปรียบอาจวนซ้ำจนเสมอเอง ปรับได้โดยส่ง `position_counts` เข้าไปลดคะแนนตาเดินที่ทำให้ตำแหน่งซ้ำ |
 | **King ไม่มีหลอดเลือดที่มีความหมายจริง** | ตั้ง `base_attack(KING)` ไว้เฉยๆ แต่คิงไม่เคยถูก `take_damage()` เรียกจริงในเกม เพราะกติกาหมากรุกไม่ยอมให้เดินไปกินคิงได้ตรงๆ (เกมจบด้วยรุกฆาตก่อนเสมอ) — เป็นพฤติกรรมที่ตั้งใจ ไม่ใช่บั๊ก |
-| **ไม่มีหน้าจอ "ดูสถิติทั้งหมด"** | `StatsManager` (ตอนที่ 11.18) เก็บสถิติสะสมไว้แล้ว แต่มีแค่ toast ตอนปลดล็อก achievement ใหม่ ยังไม่มีฉากแยกไว้ดูค่าทั้งหมดย้อนหลัง |
+| **ไม่มีหน้าจอ "ดูสถิติทั้งหมด"** | เคยทำแล้วเอาออก — `StatsManager` ยังเก็บเกมที่เล่น/ชนะ/แพ้/เสมอ, หมากที่กิน, สกิลที่ใช้, HIGH SCORE แยกโหมด และ achievement ไว้ แต่ไม่มีฉากไว้ดู ต้องการค่อยทำใหม่ได้ |
 | **ตัวหมากขยับไม่แข็ง (สมจริง)** | ตั้งใจไม่ทำต่อ — ตอนที่ 11.24 เพิ่ม idle sway (แกว่งตัวเอียงเบาๆ) แบบโค้ดล้วนๆ ไว้แล้ว ถือว่าเพียงพอ ถ้าจะเอาท่าทางเดิน/โจมตีจริงต้องมี sprite sheet หรือ `Skeleton2D` rig เป็นงานอาร์ตเพิ่ม |
+
+
+---
+
+## ตอนที่ 13 — ระบบและการแก้ไขล่าสุด
+
+บทนี้รวบรวมงานที่เพิ่มและแก้ในรอบล่าสุด โดยอธิบายพฤติกรรมสุดท้ายที่ใช้อยู่จริง
+ค่าหรือโค้ดตัวอย่างในตอนก่อนหน้าที่ต่างจากบทนี้ให้ใช้บทนี้และไฟล์ต้นฉบับที่ลิงก์ไว้เป็นหลัก
+
+### 13.1 ไฟล์หลักและ Autoload
+
+ต้องมี Autoload ครบ 4 ตัวตาม [project.godot](project.godot):
+
+| ชื่อ | ไฟล์ | หน้าที่ |
+|---|---|---|
+| `GameManager` | [game_manager.gd](script/game_manager.gd) | เก็บโหมด PVP/PVC |
+| `SceneTransition` | [SceneTransition.tscn](Scene/SceneTransition.tscn), [SceneTransition.gd](script/SceneTransition.gd) | fade เปลี่ยนฉากและเปิด/ปิด Settings |
+| `AudioManager` | [audio_manager.gd](script/audio_manager.gd) | Music/SFX และเสียงตัวละคร |
+| `StatsManager` | [stats_manager.gd](script/stats_manager.gd) | High Score, สถิติและ achievement |
+
+ใช้ Godot 4.7.1 Standard เปิดโปรเจกต์และรอ import asset ให้เสร็จก่อนรันเกมหรือชุดทดสอบ
+ไฟล์เสียง, ฟอนต์ bitmap, PNG และ `.import` ที่เกี่ยวข้องต้องอยู่ครบตามเส้นทางในโค้ด
+
+### 13.2 แก้ฮีล AI และจำกัดการใช้สกิล
+
+แก้ปัญหาการฮีลครั้งเดียวแล้วทั้งฝ่าย AI กลับมาเลือดเต็ม โดยแยกค่าฮีลของบอตจากผู้เล่น
+คิง AI ยังคงใช้ Rally ได้ แต่ลดผลและจำกัดเป้าหมายแล้ว:
+
+| สกิลฝ่าย AI | ผลปัจจุบัน |
+|---|---|
+| เบี้ย | ฮีลตัวเอง +25 HP |
+| บิชอป | ฮีลตัวเอง +30 HP |
+| เรือ | เพิ่ม max HP และ HP +15 |
+| คิง Rally | ฮีล +10 HP สูงสุด 3 ตัวที่บาดเจ็บหนักที่สุด ต้องมีเป้าหมายเข้าเงื่อนไขอย่างน้อย 2 ตัว |
+| ม้า / ควีน | บัฟการโจมตีครั้งถัดไป ×1.5 / ×2 ตามลำดับ แล้วคืนตัวคูณหลังโจมตี |
+
+บอตแต่ละตัวใช้ Active Skill ได้ครั้งเดียวต่อเกม และทั้งฝ่ายต้องเดินปกติอีก 3 ครั้งก่อนใช้สกิลครั้งต่อไป
+สกิลฮีลของ AI เลือกใช้เมื่อ HP ไม่เกิน 50%; Rally เลือกเฉพาะพวกเดียวกันที่เข้าเงื่อนไข
+จึงไม่ฮีลทั้งทีมที่เลือดเต็มหรือดันเลือดกลับเต็มทั้งหมดในครั้งเดียว
+การใช้สกิลกินหนึ่งเทิร์น และใช้ไม่ได้ระหว่างถูกรุก, กำลังเล่นแอนิเมชัน, Pause หรือเกมจบ
+ค่าของผู้เล่นยังแยกต่างหาก เช่น Rally ฝ่ายผู้เล่น +20 HP; อย่าเปลี่ยนค่ารวมเพื่อปรับเฉพาะบอต
+
+จุดแก้หลัก: [chess_piece.gd](script/chess_piece.gd) (`can_use_skill`, ค่าฮีลและ `rally_targets`),
+[Board.gd](script/Board.gd) (`try_use_skill`, `_apply_skill`, `AI_SKILL_RECOVERY_MOVES`),
+[chess_ai.gd](script/chess_ai.gd) และ [ai_player.gd](script/ai_player.gd)
+AI จำลองผลสกิลด้วยเงื่อนไขเดียวกับเกมจริง และมีค่าลดคะแนนการใช้สกิลเพื่อไม่เลือกสกิลที่ไม่คุ้มเมื่อเทียบกับการเดิน
+
+### 13.3 กติกาการโจมตีและบั๊กสถานะเกม
+
+- การตรวจตาเดินและการจำลอง AI คำนึงถึง HP: ถ้าตีไม่ตาย เหยื่อยังอยู่ช่องเดิม ผู้โจมตียังไม่ยึดช่องนั้น
+- ห้ามใช้การตีไม่ตายเพื่อเปิดแนวให้คิงตัวเองถูกรุก; การจำลอง AI ใช้กติกาเดียวกับกระดานจริง
+- ตรวจ Pause/แอนิเมชัน/เกมจบก่อนสั่งเดินหรือสกิล เพื่อกันคำสั่งซ้อน
+- AI รอคิดด้วย timer ที่หยุดขณะ Pause และตรวจตาเดินซ้ำเมื่อรอเสร็จ
+- `_on_game_ended()` มี guard `_finished` เพื่อกันผลจบเกม, โบนัสและสถิติถูกบันทึกซ้ำ
+
+อ้างอิง [chess_rules.gd](script/chess_rules.gd), [chess_ai.gd](script/chess_ai.gd),
+[Board.gd](script/Board.gd), [click_to_move.gd](script/click_to_move.gd) และ [main.gd](script/main.gd)
+
+### 13.4 เวลา 30 วินาทีต่อตา
+
+กำหนด `TURN_TIME_LIMIT := 30.0` ใน [main.gd](script/main.gd)
+รีเซ็ตเวลาผ่าน signal `turn_changed` ทั้งหลังเดินและหลังใช้สกิล
+แสดงเป็น `00:30` พร้อมชื่อฝ่ายที่ถึงตา และเปลี่ยนสีเตือนเมื่อเหลือไม่เกิน 5 วินาที
+เวลาหยุดขณะ Pause, Settings, แอนิเมชันเดิน/ต่อสู้ และเมื่อเกมจบ
+
+เมื่อหมดเวลา เรียก `Board.force_pass_turn()`:
+
+- ถ้าไม่ได้ถูกรุก: จบเทิร์นทันที ส่งตาให้อีกฝ่าย พร้อมล้างสิทธิ์ en passant และอัปเดตตัวนับตา
+- ถ้ากำลังถูกรุก: แพ้ด้วยผล `timeout` เพราะไม่สามารถข้ามตาแล้วปล่อยคิงถูกรุกได้
+
+### 13.5 จำนวนหมาก คะแนน และ High Score
+
+จำนวนหมากที่เหลือกับคะแนนเป็นคนละค่า: `_update_team_counts()` นับตัวที่ยังมี HP บนกระดานจริง
+เริ่มฝ่ายละ 16 ตัว อัปเดตเมื่อวางหมากและหลังเดิน/กินหมาก; การตีไม่ตายไม่ลดจำนวนหมาก
+
+คะแนนได้เมื่อกินตายจริงตามชนิดของเหยื่อ:
+
+| หมากที่กินได้ | คะแนน |
+|---|---:|
+| เบี้ย | 100 |
+| ม้า | 300 |
+| บิชอป | 300 |
+| เรือ | 500 |
+| ควีน | 900 |
+| ชนะด้วยรุกฆาตหรืออีกฝ่ายหมดเวลาขณะถูกรุก | โบนัส 1,000 ครั้งเดียว |
+
+ตัวอย่าง: กินเบี้ย 1 ตัวและเรือ 1 ตัว = 600 คะแนน; ถ้าชนะต่อจะรวมเป็น 1,600 คะแนน
+การโจมตีไม่ตายและผลเสมอไม่ให้โบนัสนี้ คิงจบด้วยกติกาผลเกม จึงไม่มีคะแนนกินคิงใน `CAPTURE_POINTS`
+
+PVC แสดงคะแนนผู้เล่นฝ่ายขาว; PVP แยกคะแนน Player 1/Player 2 และใช้ High Score สถิติเดียวร่วมกัน
+High Score บันทึกผ่าน `StatsManager.record_score()` ไปยัง `user://stats.cfg` ทันทีเมื่อทำสถิติใหม่
+เปิดเกมรอบถัดไปยังอ่านค่านี้กลับมาได้ หน้าจอจบเกมแสดงคะแนนรอบนี้และ High Score
+
+จุดปรับ: `CAPTURE_POINTS`, `VICTORY_BONUS`, `_on_piece_attacked`, `_award_score`,
+`_update_score_label`, `_setup_pvp_hud` ใน [main.gd](script/main.gd)
+และ `record_score`, การ save/load ใน [stats_manager.gd](script/stats_manager.gd)
+
+### 13.6 แยก UI Components และจัด HUD ใหม่
+
+ชุดที่แยกจาก `TimeAndScoreFrame.jpg` อยู่ใน [asset/ui/components](asset/ui/components/README.md)
+มี PNG โปร่งใส **76 ชิ้น**: กรอบ 4, ไอคอน 3, ตัวอักษร A–Z และเครื่องหมาย 30,
+เลขสีฟ้า 10, เลขคริสตัล 10, รูน 4, ป้ายข้อความ 9 และชิ้นขอบ/มุม/ลูกศร 6
+พร้อม source atlas 6 แผ่น, `manifest.json`, `preview.png` และฟอนต์ BMFont `.fnt`/atlas `.png`
+ไฟล์ ZIP อยู่ที่ [output/time-score-ui-components.zip](output/time-score-ui-components.zip)
+ชิ้นภาพผ่านการทำความสะอาด/ประกอบใหม่จาก JPG จึงไม่ใช่การครอปที่เหมือนต้นฉบับทุกพิกเซล
+
+HUD ใช้กรอบและตัวอักษรรูนเรืองแสงแทนแถบข้อมูลเรียงเต็มด้านล่าง
+จัดตำแหน่งใน [main.tscn](Scene/main.tscn) ให้จำนวนหมาก, คะแนน, High Score และเวลาอ่านแยกจากกระดาน
+ส่วนกลางกรอบทีมโปร่งใสด้วย shader โดยยังรักษาขอบเรืองแสง
+ไฟล์ใช้งานมีทั้งในชุด components และโฟลเดอร์ที่จัดแยก เช่น `asset/frames`, `asset/fonts`,
+`asset/labels`, `asset/digits`; เวลาเปลี่ยน asset ให้ยึดเส้นทางที่ Scene/สคริปต์อ้างจริง
+
+แก้เลขคะแนนหลุดออกจากกรอบโดยให้ `Frame2` มี `Title` และ `Digits` เป็นลูกแยกกัน
+`_show_score_digits()` สร้างเลขใน `HBoxContainer` ที่ `UI/ScorePanel/Frame2/Digits`
+ถอดลูกเก่าออกจาก Container ก่อน `queue_free()` เพื่อไม่ให้เลขเก่าร่วมคำนวณ layout ในเฟรมเดียวกัน
+คะแนนมีอย่างน้อย 4 หลัก (`%04d`) และขยายเป็น 5 หลักขึ้นไปได้โดยใช้แถวเดิม
+เลขคะแนนปัจจุบันโหลดจาก `asset/digits/0.png` ถึง `9.png`; ข้อความใช้ bitmap font รูนแทนฟอนต์ระบบ
+
+### 13.7 Pause, Settings และ SceneTransition
+
+Pause มีปุ่ม Resume, Restart, Settings และ Main Menu โดย Settings ใช้ภาพปุ่มธีมเดียวกับชุดเมนู
+ภาพปุ่มอยู่ใน `asset/ui/pause_settings.png` และ `pause_settings_hover.png`
+เมนู Pause วาดทับ HUD และซ่อนหลอดเลือดขณะเปิด; เริ่มเกมใหม่คืนสถานะหลอดเลือดด้วย
+
+ปุ่มภาพ **QUIT** ใน [settings.tscn](Scene/settings.tscn) คือการย้อนกลับตามทางที่เข้ามา:
+
+| เปิด Settings จาก | เมื่อกด QUIT หรือ Esc |
+|---|---|
+| Main Menu (`embedded = false`) | กลับ Main Menu ผ่าน `SceneTransition.change_scene()` |
+| Pause Gameplay (`embedded = true`) | ส่ง `back_requested` แล้วกลับ Pause เดิม เกมยังหยุดอยู่ |
+
+ใช้ปุ่มเดิม `BackButton` ที่มีภาพ QUIT; ไม่เพิ่มปุ่ม BACK แยกและไม่ใช้ปุ่มนี้ออกจากโปรแกรม
+เปิด Settings จาก gameplay เป็น overlay บนเกมเดิม จึงเก็บกระดาน, HP, คะแนนและเวลาที่เหลือไว้
+ลาก Music/SFX แล้วปรับทันทีและบันทึก `user://audio_settings.cfg`
+
+`SceneTransition.transition(action: Callable)` fade ออก 0.5 วินาที เรียก action ตอนจอดำ แล้ว fade เข้า 0.5 วินาที
+ตั้ง `PROCESS_MODE_ALWAYS`, layer 100 และ tween ที่ทำงานขณะ Pause
+จึงมี transition ทั้งจาก Pause เข้า Settings และจาก Settings กลับ Pause
+ใช้ `is_transitioning` กับ `_returning` กันกดซ้ำ และป้องกัน Resume ขณะ Settings ยังเปิดอยู่
+
+อ้างอิง [main.gd](script/main.gd), [settings.gd](script/settings.gd),
+[SceneTransition.gd](script/SceneTransition.gd) และ [main.tscn](Scene/main.tscn)
+
+### 13.8 เสียงผลเกมและเสียงตัวละครล่าสุด
+
+เสียง victory/lose เริ่มทันทีเมื่อแสดงผลเกม แม้เกมถูก Pause แล้ว
+`AudioManager.play_sfx()` ใช้ player ชั่วคราวที่ตั้ง `PROCESS_MODE_ALWAYS` และ bus `SFX`
+จึงไม่รอให้กลับมา Resume ก่อนดัง เพลงใช้ bus `Music` แยกจากเอฟเฟกต์
+
+เสียงตัวละครปัจจุบันมี **12 คลิป: เลือกตัวละคร 6 + ตาย 6**
+เป็นเสียงสังเคราะห์ภาษาอังกฤษแบบคำอุทานสั้น ปรับโทนแยกตามบทบาท:
+
+| ตัวละคร | ตอนเลือก | โทนเสียง |
+|---|---|---|
+| เบี้ย | Yah! | ทหารหนุ่มพร้อมรบ |
+| ม้า | Hyah! | นักรบ |
+| บิชอป | Ha! | นักเวท |
+| เรือ | Hah! | ผู้พิทักษ์เสียงทุ้ม |
+| ควีน | Fire! | หญิงทรงอำนาจ |
+| คิง | Hah! | กษัตริย์เสียงทุ้ม |
+
+- คลิปเลือกอยู่ใน `asset/audio/selection/ack_<kind>.wav` พร้อม `selection_acks.json`
+- คลิปตายอยู่ใน `asset/audio/combat/death_<kind>.wav` พร้อม `combat_voices.json`
+- **ลบเสียงร้องตอนโดนตี `hurt_*.wav`, import และ cache ของชุดนี้ออกแล้ว** และไม่มี callback เล่นเสียงร้องเมื่อโจมตีไม่ตาย
+- เสียง Greeting แบบประโยคยาวใน `asset/audio/greetings` ถูกถอดออกแล้ว ไม่ต้องนำกลับมาใช้
+- เสียงเอฟเฟกต์การโจมตีเดิม เช่น `<kind>_hit.mp3` ยังอยู่ แยกจากเสียงร้องตัวละคร
+
+คลิกเลือกเล่นเสียงของชนิดที่เลือก แม้หมากยังไม่มีทางเดิน; ไม่เล่นจากการคลิกหมากศัตรูหรือขณะ Pause
+ใช้ช่องเสียงเลือกช่องเดียวและกันคลิกซ้ำ 700 ms ต่อชนิด เพื่อไม่ให้เสียงทับกัน
+ตอนกินตาย `piece_spawner.play_capture()` เรียก `play_character_reaction(kind, true)` ตรงจังหวะปะทะหลังพุ่งเข้าหา
+ใช้เสียงของ **เหยื่อ** และเล่นผ่าน AudioManager เพื่อให้เสียงต่อได้หลังเหยื่อถูกลบหรือจอผลเกม Pause
+เสียงตายมีลำดับก่อนเสียงเลือก; กด Pause เองหรือออกจาก gameplay เรียก `stop_character_audio()`
+ส่วนจบเกมหยุดเฉพาะเสียงเลือก เพื่อให้เสียงตายเล่นจนจบได้
+`play_character_reaction(kind, false)` คืน `false` โดยไม่เล่นเสียง
+
+จุดแก้: [audio_manager.gd](script/audio_manager.gd), [click_to_move.gd](script/click_to_move.gd),
+[piece_spawner.gd](script/piece_spawner.gd) และ [main.gd](script/main.gd)
+
+### 13.9 การตรวจสอบและรันชุดทดสอบ
+
+รันจากโฟลเดอร์โปรเจกต์ด้วย Godot 4.7.1 หลัง import asset แล้ว ตัวอย่าง PowerShell:
+
+```powershell
+$godotExe = 'C:\Users\Juins\Desktop\Godot_v4.7.1-stable_win64.exe'
+& $godotExe --headless --path . --script res://tests/combat_voices.gd
+```
+
+เปลี่ยนตำแหน่ง exe ให้ตรงเครื่อง และเปลี่ยนชื่อสคริปต์ตามตารางด้านล่าง
+รอ process ของแต่ละชุดจบก่อนรันชุดถัดไป เพราะบางชุดตรวจการ save/load ใน `user://`
+ผลควรจบด้วย `FAILURES=0` และไม่มี `SCRIPT ERROR`/resource โหลดไม่สำเร็จ
+
+| ชุดทดสอบ | ตรวจอะไร |
+|---|---|
+| [regressions.gd](tests/regressions.gd) | กติกาการโจมตี/HP, Pause และ AI |
+| [ai_skill_balance.gd](tests/ai_skill_balance.gd) | ข้อจำกัดสกิล AI, ฮีลและ Rally |
+| [turn_timer.gd](tests/turn_timer.gd) | เวลา 30 วินาที, ข้ามตาและแพ้ขณะถูกรุก |
+| [score_hud.gd](tests/score_hud.gd) | จำนวนหมาก, คะแนนและ High Score |
+| [score_layout.gd](tests/score_layout.gd) | เลขอยู่ในแถวกรอบและรองรับคะแนนหลายหลัก |
+| [weighted_scoring.gd](tests/weighted_scoring.gd) | คะแนนแต่ละชนิดและโบนัสไม่ซ้ำ |
+| [settings_navigation.gd](tests/settings_navigation.gd) | ปุ่มเดิมย้อนกลับถูกทาง |
+| [pause_settings.gd](tests/pause_settings.gd) | รักษาสถานะเกมและเสียงเมื่อเข้า/ออก Settings |
+| [settings_transition.gd](tests/settings_transition.gd) | fade ขณะ Pause, ฟอนต์และกรอบโปร่งใส |
+| [character_greetings.gd](tests/character_greetings.gd) | เสียงเลือกครบทุกชนิด, กันซ้ำและหยุดเมื่อออกฉาก |
+| [combat_voices.gd](tests/combat_voices.gd) | ไม่มีเสียงร้องเจ็บ, เสียงตายตรงปะทะและเล่นต่อหลังเหยื่อถูกลบ |
+
+รอบแก้เสียงล่าสุดตรวจ `combat_voices.gd` ผ่านหลังลบเสียงร้องเจ็บ
+ก่อนหน้านั้นตรวจ `character_greetings.gd`, `regressions.gd` และ `pause_settings.gd` ผ่าน
+การอัปเดตคู่มือรอบนี้ตรวจลิงก์ไฟล์และรูปแบบเอกสาร ไม่ได้รันชุดทดสอบทั้งหมดใหม่
+
+ตรวจด้วยตา/หูเพิ่มเติมในเกม: ปุ่มธีมเดียวกัน, HUD ไม่บังหมาก, QUIT กลับถูกหน้า,
+เวลาไม่ลดใน Settings, เสียงผลเกมดังทันที, การตีไม่ตายมีเฉพาะเอฟเฟกต์โจมตี,
+และการกินตายมีเสียงของชนิดที่ถูกกิน

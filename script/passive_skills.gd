@@ -26,22 +26,23 @@ const KING_ROYAL_GUARD_REDUCTION := 0.15  # หมากในระยะปร
 ## คำนวณดาเมจจริงที่เหยื่อจะได้รับ หลังคิด passive ของทั้งผู้โจมตีและเหยื่อแล้ว
 ## เรียกแทนการใช้ attacker.attack_power ตรงๆ ทุกที่ที่มีการคำนวณดาเมจ (ทั้งเกมจริงและ AI จำลอง)
 ## state + victim_cell คือกระดานปัจจุบันและตำแหน่งของเหยื่อ (ดูคำเตือนหัวไฟล์ว่าทำไมต้องมี)
-static func compute_damage(attacker: ChessPiece, victim: ChessPiece, state: Array, victim_cell: Vector2i) -> float:
+static func compute_damage(attacker: ChessPiece, victim: ChessPiece, state: Array, victim_cell: Vector2i, simulated_hp: float = -1.0) -> float:
 	var damage := attacker.attack_power
-	damage *= _attacker_multiplier(attacker, victim)
+	damage *= _attacker_multiplier(attacker, victim, simulated_hp)
 	damage *= _victim_multiplier(attacker, victim, state, victim_cell)
 	return damage
 
 ## ตัวคูณดาเมจจากฝั่ง "ผู้โจมตี" — ควีน: โค่นล้ม / ม้า: จู่โจมครั้งแรก
-static func _attacker_multiplier(attacker: ChessPiece, victim: ChessPiece) -> float:
+static func _attacker_multiplier(attacker: ChessPiece, victim: ChessPiece, simulated_hp: float = -1.0) -> float:
 	var multiplier := 1.0
+	var victim_hp := victim.hp if simulated_hp < 0.0 else simulated_hp
 	if attacker.piece_kind == ChessPiece.Kind.QUEEN and victim.max_hp > 0.0:
-		var hp_ratio: float = victim.hp / victim.max_hp
+		var hp_ratio: float = victim_hp / victim.max_hp
 		if hp_ratio <= QUEEN_EXECUTE_HP_THRESHOLD:
 			multiplier *= QUEEN_EXECUTE_MULTIPLIER
 	if attacker.piece_kind == ChessPiece.Kind.KNIGHT and not attacker.has_attacked:
 		multiplier *= KNIGHT_FIRST_STRIKE_MULTIPLIER
-	if attacker.piece_kind == ChessPiece.Kind.BISHOP and victim.max_hp > 0.0 and victim.hp >= victim.max_hp:
+	if attacker.piece_kind == ChessPiece.Kind.BISHOP and victim.max_hp > 0.0 and victim_hp >= victim.max_hp:
 		multiplier *= BISHOP_PURIFY_MULTIPLIER
 	return multiplier
 

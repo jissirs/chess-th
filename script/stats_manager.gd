@@ -5,12 +5,23 @@ extends Node
 
 const SAVE_PATH := "user://stats.cfg"
 
+## สถิติสูงสุดแยกตามโหมด: "PVC" = เล่นกับ AI, "PVP" = 2 ผู้เล่น (ใน PVP ผู้เล่นทั้งสองใช้ค่าเดียวกัน)
+var high_scores: Dictionary = {"PVC": 0, "PVP": 0}
+## high_score = สถิติของโหมดที่กำลังเล่น (GameManager.game_mode) — โค้ดเดิมที่อ่าน/เขียน high_score
+## ตรงๆ (แผงคะแนน, เทสต์) จึงใช้ได้ต่อโดยไม่ต้องแก้ แต่ได้ค่าของโหมดที่ถูกต้องเสมอ
+var high_score: int:
+	get:
+		return int(high_scores.get(GameManager.game_mode, 0))
+	set(value):
+		high_scores[GameManager.game_mode] = value
 var total_kills: int = 0
 var total_skills_used: int = 0
 var games_played: int = 0
 var games_won: int = 0
 var games_lost: int = 0
 var games_drawn: int = 0
+## จำนวนเกม PVP ที่เล่นจบ — แยกจาก won/lost/drawn เพราะ PVP ไม่มี "ผู้เล่น" ฝ่ายตายตัว นับชนะ/แพ้ไม่ได้
+var games_pvp: int = 0
 
 ## รายชื่อ achievement ที่ปลดล็อกแล้ว (เก็บเป็น key string) — ใช้กันไม่ให้แจ้งเตือนซ้ำ
 var unlocked_achievements: Array = []
@@ -31,6 +42,11 @@ var ACHIEVEMENTS := [
 func _ready() -> void:
 	_load()
 
+func record_score(score: int) -> void:
+	if score > high_score:
+		high_score = score
+		_save()
+
 func record_kill() -> void:
 	total_kills += 1
 	_check_achievements()
@@ -41,10 +57,13 @@ func record_skill_used() -> void:
 	_check_achievements()
 	_save()
 
-## บันทึกผลจบเกม — win_for_player: true=ผู้เล่นชนะ, false=แพ้, null=เสมอ/ไม่เกี่ยว (เช่นโหมด PVP)
-func record_game_ended(win_for_player) -> void:
+## บันทึกผลจบเกม — win_for_player: true=ผู้เล่นชนะ, false=แพ้, null=เสมอ
+## pvp = true: เกม 2 ผู้เล่น นับแค่ games_played/games_pvp ไม่นับชนะ/แพ้/เสมอ
+func record_game_ended(win_for_player, pvp: bool = false) -> void:
 	games_played += 1
-	if win_for_player == true:
+	if pvp:
+		games_pvp += 1
+	elif win_for_player == true:
 		games_won += 1
 	elif win_for_player == false:
 		games_lost += 1
@@ -63,6 +82,9 @@ func _check_achievements() -> void:
 
 func _save() -> void:
 	var config := ConfigFile.new()
+	config.set_value("stats", "high_score_pvc", high_scores["PVC"])
+	config.set_value("stats", "high_score_pvp", high_scores["PVP"])
+	config.set_value("stats", "games_pvp", games_pvp)
 	config.set_value("stats", "total_kills", total_kills)
 	config.set_value("stats", "total_skills_used", total_skills_used)
 	config.set_value("stats", "games_played", games_played)
@@ -76,6 +98,11 @@ func _load() -> void:
 	var config := ConfigFile.new()
 	if config.load(SAVE_PATH) != OK:
 		return
+	# ไฟล์เซฟเก่ามีแค่ "high_score" ค่าเดียว (ตอนนั้นยังไม่แยกโหมด) — ย้ายไปเป็นสถิติของโหมด PVC
+	var legacy: int = maxi(0, int(config.get_value("stats", "high_score", 0)))
+	high_scores["PVC"] = maxi(0, int(config.get_value("stats", "high_score_pvc", legacy)))
+	high_scores["PVP"] = maxi(0, int(config.get_value("stats", "high_score_pvp", 0)))
+	games_pvp = config.get_value("stats", "games_pvp", 0)
 	total_kills = config.get_value("stats", "total_kills", 0)
 	total_skills_used = config.get_value("stats", "total_skills_used", 0)
 	games_played = config.get_value("stats", "games_played", 0)

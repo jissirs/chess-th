@@ -67,6 +67,7 @@ func _ready() -> void:
 	board.move_made.connect(_on_move_made_update_passives)
 	board.skill_used.connect(_on_skill_used_update_passives)
 	_update_passive_indicators()
+	board.pieces_ready.emit()
 
 func _spawn_team(_board: Node, back_row: int, side: int, soldier_colors: Array) -> void:
 	# แถวเบี้ยอยู่ติดกับแถวหลัง เยื้องเข้ามาตรงกลางกระดาน
@@ -181,6 +182,7 @@ func play_capture(attacker: ChessPiece, victim: ChessPiece, dest_cell: Vector2i)
 
 	# 2) จังหวะปะทะ: สั่งเหยื่อเริ่มสะบัด/ล้ม + โชว์รอยฟัน + เสียงตีตาย (รันแยก ไม่บล็อกคิวหลัก) แล้วหยุดนิ่งสั้นๆ
 	tween.tween_callback(_play_victim_death.bind(victim))
+	tween.tween_callback(AudioManager.play_character_reaction.bind(victim.piece_kind, true))
 	tween.tween_callback(_spawn_slash_effect.bind(victim.position))
 	tween.tween_callback(AudioManager.play_sfx.bind(_attack_sfx_for(attacker.piece_kind)))
 	tween.tween_interval(IMPACT_HOLD)
@@ -397,10 +399,8 @@ func _on_skill_used(piece: ChessPiece, effect_kind: String) -> void:
 		"rally":
 			# ฮีลทั้งทีม — ยิงประกายที่หมากฝ่ายเดียวกันทุกตัว ไม่ใช่แค่คิงตัวเดียว
 			var board := get_parent()
-			for row in board.board_state:
-				for p in row:
-					if p != null and p.side == piece.side:
-						_spawn_skill_sparkle(p.global_position, Color(0.3, 1.0, 0.4, 0.9))
+			for target in board.last_skill_targets:
+				_spawn_skill_sparkle(target.global_position, Color(0.3, 1.0, 0.4, 0.9))
 
 ## ประกายฟุ้งลอยขึ้นครั้งเดียว (one-shot) ใช้กับทุกเอฟเฟกต์สกิล ต่างกันแค่สี
 func _spawn_skill_sparkle(at_position: Vector2, color: Color) -> void:

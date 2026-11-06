@@ -272,20 +272,45 @@ static func apply(state: Array, from: Vector2i, to: Vector2i, ep_target: Vector2
 	return new_state
 
 
+## Simulate HP-based combat without mutating the real pieces.
+static func apply_combat(state: Array, from: Vector2i, to: Vector2i, ep_target: Vector2i, hp_overrides: Dictionary = {}) -> Dictionary:
+	var overrides := hp_overrides.duplicate()
+	var attacker := at(state, from)
+	var victim := at(state, to)
+	var victim_cell := to
+	if attacker != null and attacker.piece_kind == ChessPiece.Kind.PAWN and to == ep_target and victim == null:
+		victim_cell = Vector2i(to.x, from.y)
+		victim = at(state, victim_cell)
+	if attacker == null or victim == null:
+		return {"state": apply(state, from, to, ep_target), "overrides": overrides}
+	var hp: float = hp_overrides.get(victim, victim.hp)
+	var damage := PassiveSkills.compute_damage(attacker, victim, state, victim_cell, hp) * attacker.attack_buff_multiplier
+	var remaining_hp := hp - damage
+	if remaining_hp > 0.0:
+		overrides[victim] = remaining_hp
+		return {"state": copy_state(state), "overrides": overrides}
+	overrides.erase(victim)
+	return {"state": apply(state, from, to, ep_target), "overrides": overrides}
+
+
 ## ตาเดินที่ใช้ได้จริง = ตาเดินดิบ ที่กรองเอาตาที่ทำให้คิงตัวเองถูกรุกออกแล้ว
-static func legal_moves(state: Array, from: Vector2i, ep_target: Vector2i) -> Array:
+static func legal_moves(state: Array, from: Vector2i, ep_target: Vector2i, hp_overrides: Dictionary = {}) -> Array:
 	var piece := at(state, from)
 	if piece == null:
 		return []
 	var out: Array = []
 	for to in pseudo_moves(state, from, ep_target):
-		if not is_in_check(apply(state, from, to, ep_target), piece.side):
+		var target := at(state, to)
+		if target != null and target.piece_kind == ChessPiece.Kind.KING:
+			continue
+		var combat := apply_combat(state, from, to, ep_target, hp_overrides)
+		if not is_in_check(combat.state, piece.side):
 			out.append(to)
 	return out
 
 
 ## ตาเดินทั้งหมดของฝ่ายหนึ่ง คืนเป็น Array ของ {"from": Vector2i, "to": Vector2i}
-static func all_legal_moves(state: Array, p_side: int, ep_target: Vector2i) -> Array:
+static func all_legal_moves(state: Array, p_side: int, ep_target: Vector2i, hp_overrides: Dictionary = {}) -> Array:
 	var out: Array = []
 	for row in range(ROWS):
 		for col in range(COLS):
@@ -293,7 +318,7 @@ static func all_legal_moves(state: Array, p_side: int, ep_target: Vector2i) -> A
 			if piece == null or piece.side != p_side:
 				continue
 			var from := Vector2i(col, row)
-			for to in legal_moves(state, from, ep_target):
+			for to in legal_moves(state, from, ep_target, hp_overrides):
 				out.append({"from": from, "to": to})
 	return out
 
@@ -341,9 +366,28 @@ static func insufficient_material(state: Array) -> bool:
 	return false
 
 
+## คีย์ข้อความแทน "ตำแหน่ง" หนึ่งตำแหน่ง ใช้นับว่าตำแหน่งเดิมซ้ำกี่ครั้ง (threefold repetition)
+## ตำแหน่งเดียวกัน = หมากชนิด/ฝ่าย/เลือดเท่ากันทุกช่อง + ฝ่ายที่ถึงตา + ช่อง en passant เดียวกัน
+## + สิทธิ์ castling เดิม (คิง/เรือที่ยังไม่เคยเดิน) — เลือดอยู่ในคีย์ด้วยเพราะเกมนี้มีระบบ HP
+## ตำแหน่งที่เลือดต่างกันจึงไม่นับว่าซ้ำ (ไม่งั้นการโจมตีไม่ตายที่ไม่ขยับหมากจะโดนนับผิด)
+static func position_key(state: Array, side_to_move: int, ep_target: Vector2i) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for row in range(ROWS):
+		for col in range(COLS):
+			var piece: ChessPiece = state[row][col]
+			if piece == null:
+				continue
+			var castle_flag := 0
+			if (piece.piece_kind == ChessPiece.Kind.KING or piece.piece_kind == ChessPiece.Kind.ROOK) and not piece.has_moved:
+				castle_flag = 1
+			parts.append("%d,%d:%d%d%d:%d" % [col, row, piece.piece_kind, piece.side, castle_flag, int(round(piece.hp))])
+	return "%d|%d,%d|%s" % [side_to_move, ep_target.x, ep_target.y, ";".join(parts)]
+
+
 ## สรุปสถานะกระดานสำหรับฝ่ายที่ถึงตาเดิน
 ## คืน {"check": bool, "result": String} โดย result == "" แปลว่าเกมยังไม่จบ
 ## ค่าอื่นที่เป็นไปได้: "checkmate", "stalemate", "insufficient_material", "fifty_move"
+## (ซ้ำตา 3 ครั้ง "threefold_repetition" ต้องจำประวัติตำแหน่ง จึงตัดสินที่ Board._evaluate_status())
 static func status(state: Array, side_to_move: int, ep_target: Vector2i, halfmove_clock: int) -> Dictionary:
 	var check := is_in_check(state, side_to_move)
 	var result := ""

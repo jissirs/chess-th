@@ -29,6 +29,8 @@ var resting_scale: Vector2 = Vector2.ONE
 ## Board.try_move() ตัดสินว่าการกินครั้งนี้ตายจริงไหม ถ้าไม่ตายผู้โจมตีจะไม่ได้ขยับเข้าไปแทนที่
 const BASE_HP := 100.0
 
+## เปิดตอนเมนู pause แสดงอยู่ — ซ่อนหลอดเลือดและไอคอนพาสซีฟของทุกตัว
+static var hide_bars: bool = false
 var max_hp: float = BASE_HP
 var hp: float = BASE_HP
 var attack_power: float = 1.0
@@ -41,6 +43,7 @@ var passive_indicator: bool = false  # true ถ้า passive ของตัว
 ## --- ระบบสกิล --- ทุกชนิดหมากมีสกิลของตัวเอง 1 อัน ใช้ได้ครั้งเดียวต่อเกม (แทนการเดินในตานั้น)
 const SKILL_COOLDOWN_TURNS := 6  # จำนวนตา (ครึ่งตา) ที่ต้องรอก่อนใช้สกิลตัวเดิมได้อีกครั้ง
 var skill_cooldown_remaining: int = 0
+var skill_uses: int = 0
 
 ## คูณดาเมจของ "ตาถัดไปที่โจมตีสำเร็จ" (สกิลม้า/ควีน) แล้วรีเซ็ตกลับเป็น 1.0 อัตโนมัติหลังใช้ครั้งเดียว
 var attack_buff_multiplier: float = 1.0
@@ -62,7 +65,46 @@ static func skill_label(kind: int) -> String:
 
 ## ใช้สกิลได้ไหมตอนนี้ — ต้องเป็นชนิดที่มีสกิล และยังไม่เคยใช้มาก่อนในเกมนี้
 func can_use_skill() -> bool:
+	if is_ai_controlled() and skill_uses >= 1:
+		return false
 	return has_skill(piece_kind) and skill_cooldown_remaining <= 0
+
+# AI rally has a smaller healing budget and a longer recovery time.
+const AI_RALLY_HEAL := 10.0
+const AI_RALLY_MAX_TARGETS := 3
+const AI_RALLY_COOLDOWN_TURNS := 12
+
+func is_ai_controlled() -> bool:
+	var game_manager := (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameManager")
+	return side == Team.BLACK and game_manager != null and game_manager.game_mode == "PVC"
+
+func skill_cooldown_turns() -> int:
+	return AI_RALLY_COOLDOWN_TURNS if piece_kind == Kind.KING and is_ai_controlled() else SKILL_COOLDOWN_TURNS
+
+# AI can recover from a wound, but cannot repeatedly refill its health.
+func self_heal_amount() -> float:
+	if piece_kind == Kind.BISHOP:
+		return 30.0 if is_ai_controlled() else maxf(max_hp - hp, 0.0)
+	return 25.0 if is_ai_controlled() else 40.0
+
+func fortify_amount() -> float:
+	return 15.0 if is_ai_controlled() else 30.0
+
+func rally_heal_amount() -> float:
+	return AI_RALLY_HEAL if is_ai_controlled() else 20.0
+
+func rally_targets(state: Array, hp_overrides: Dictionary = {}) -> Array:
+	var targets: Array = []
+	for row in state:
+		for ally in row:
+			if ally != null and ally.side == side and hp_overrides.get(ally, ally.hp) < ally.max_hp:
+				if not is_ai_controlled() or hp_overrides.get(ally, ally.hp) <= ally.max_hp * 0.5:
+					targets.append(ally)
+	if is_ai_controlled():
+		targets.sort_custom(func(a, b):
+			return hp_overrides.get(a, a.hp) / a.max_hp < hp_overrides.get(b, b.hp) / b.max_hp)
+		targets = targets.slice(0, AI_RALLY_MAX_TARGETS)
+	return targets
 	
 	
 ## พลังโจมตีพื้นฐานตามชนิดหมาก — ดาเมจที่สร้างให้เหยื่อทุกครั้งที่กิน/โจมตีสำเร็จ
@@ -88,7 +130,7 @@ func _process(_delta: float) -> void:
 ## วาดหลอดเลือดลอยเหนือหัวหมาก — หารด้วย scale ปัจจุบันทุกจุด กันไม่ให้หลอดยืด/หดเบี้ยว
 ## ตอนหมากถูกขยายเวลาเลือก หรือแถวไกล้-ไกลกล้องที่ขนาดหมากต่างกันมาก (ดู piece_spawner.gd)
 func _draw() -> void:
-	if texture == null or max_hp <= 0.0:
+	if texture == null or max_hp <= 0.0 or hide_bars:
 		return
 	var sx: float = maxf(absf(scale.x), 0.0001)
 	var sy: float = maxf(absf(scale.y), 0.0001)

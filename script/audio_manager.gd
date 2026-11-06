@@ -8,12 +8,35 @@ const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
 const SAVE_PATH := "user://audio_settings.cfg"
 
+const GREETING_REPEAT_MS := 700
+const GREETING_STREAMS := {
+	ChessPiece.Kind.PAWN: preload("res://asset/audio/selection/ack_pawn.wav"),
+	ChessPiece.Kind.KNIGHT: preload("res://asset/audio/selection/ack_knight.wav"),
+	ChessPiece.Kind.BISHOP: preload("res://asset/audio/selection/ack_bishop.wav"),
+	ChessPiece.Kind.ROOK: preload("res://asset/audio/selection/ack_rook.wav"),
+	ChessPiece.Kind.QUEEN: preload("res://asset/audio/selection/ack_queen.wav"),
+	ChessPiece.Kind.KING: preload("res://asset/audio/selection/ack_king.wav"),
+}
+const DEATH_STREAMS := {
+	ChessPiece.Kind.PAWN: preload("res://asset/audio/combat/death_pawn.wav"),
+	ChessPiece.Kind.KNIGHT: preload("res://asset/audio/combat/death_knight.wav"),
+	ChessPiece.Kind.BISHOP: preload("res://asset/audio/combat/death_bishop.wav"),
+	ChessPiece.Kind.ROOK: preload("res://asset/audio/combat/death_rook.wav"),
+	ChessPiece.Kind.QUEEN: preload("res://asset/audio/combat/death_queen.wav"),
+	ChessPiece.Kind.KING: preload("res://asset/audio/combat/death_king.wav"),
+}
+var reaction_player: AudioStreamPlayer
+var greeting_player: AudioStreamPlayer
+var _greeting_last_played: Dictionary = {}
+
 @onready var music_player: AudioStreamPlayer = AudioStreamPlayer.new()
 
 func _ready() -> void:
 	music_player.bus = MUSIC_BUS
 	add_child(music_player)
 	_load_settings()
+	_ensure_greeting_player()
+	_ensure_reaction_player()
 
 ## เล่นเพลงพื้นหลัง (loop อัตโนมัติถ้าไฟล์ตั้ง loop ไว้ในตัว import เอง)
 func play_music(stream: AudioStream) -> void:
@@ -31,11 +54,74 @@ func play_sfx(stream: AudioStream) -> void:
 	if stream == null:
 		return
 	var player := AudioStreamPlayer.new()
+	# Keep UI and game-result effects playing while the game is paused.
+	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	player.stream = stream
 	player.bus = SFX_BUS
 	add_child(player)
 	player.play()
 	player.finished.connect(player.queue_free)
+
+## One dedicated selection-ack channel prevents short vocal responses from stacking.
+func _ensure_greeting_player() -> void:
+	if is_instance_valid(greeting_player):
+		return
+	greeting_player = get_node_or_null("CharacterGreeting") as AudioStreamPlayer
+	if greeting_player == null:
+		greeting_player = AudioStreamPlayer.new()
+		greeting_player.name = "CharacterGreeting"
+		greeting_player.bus = SFX_BUS
+		greeting_player.process_mode = Node.PROCESS_MODE_PAUSABLE
+		add_child(greeting_player)
+
+func play_greeting(kind: int) -> bool:
+	if get_tree().paused or not GREETING_STREAMS.has(kind):
+		return false
+	if is_instance_valid(reaction_player) and reaction_player.playing:
+		return false
+	_ensure_greeting_player()
+	var stream: AudioStream = GREETING_STREAMS[kind]
+	var now := Time.get_ticks_msec()
+	if greeting_player.playing and greeting_player.stream == stream:
+		return false
+	if now - int(_greeting_last_played.get(kind, -GREETING_REPEAT_MS)) < GREETING_REPEAT_MS:
+		return false
+	greeting_player.stop()
+	greeting_player.stream = stream
+	greeting_player.play()
+	_greeting_last_played[kind] = now
+	return true
+
+func stop_greeting() -> void:
+	if is_instance_valid(greeting_player):
+		greeting_player.stop()
+	_greeting_last_played.clear()
+
+## Victim reactions survive the piece being removed and the result menu pausing play.
+func _ensure_reaction_player() -> void:
+	if is_instance_valid(reaction_player):
+		return
+	reaction_player = AudioStreamPlayer.new()
+	reaction_player.name = "CharacterReaction"
+	reaction_player.bus = SFX_BUS
+	reaction_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(reaction_player)
+
+func play_character_reaction(kind: int, killed: bool) -> bool:
+	var streams: Dictionary = DEATH_STREAMS
+	if not killed or get_tree().paused or not streams.has(kind):
+		return false
+	_ensure_reaction_player()
+	stop_greeting()
+	reaction_player.stop()
+	reaction_player.stream = streams[kind]
+	reaction_player.play()
+	return true
+
+func stop_character_audio() -> void:
+	stop_greeting()
+	if is_instance_valid(reaction_player):
+		reaction_player.stop()
 
 ## --- ควบคุมระดับเสียง (รับค่า 0.0-1.0 จาก slider แล้วแปลงเป็นเดซิเบล) ---
 

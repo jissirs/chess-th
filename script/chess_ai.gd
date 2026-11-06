@@ -35,10 +35,8 @@ const PIECE_VALUES := {
 
 const CHECKMATE_SCORE := 9999.0
 
-## ค่าติดลบเล็กมาก หักออกจากคะแนนของ "การใช้สกิล" เสมอ — กันไม่ให้ AI เลือกใช้สกิลที่ให้ผลเท่ากับ
-## เดินเฉยๆ (เช่นฮีลตอนเลือดเต็มอยู่แล้ว) เพราะคะแนนเท่ากันเป๊ะจะถูกสุ่มเลือกได้ 50/50 — ต้องเล็กกว่า
-## ผลจริงของสกิลมากๆ (เบี้ยฮีล +40 มีผลต่อคะแนนหลักสิบ) ไม่งั้นจะไปกลบประโยชน์จริงของสกิลจนไม่ถูกเลือกเลย
-const SKILL_TIEBREAK_PENALTY := 0.001
+## Require a meaningful benefit over moving before spending a limited skill.
+const SKILL_TIEBREAK_PENALTY := 0.15
 
 ## น้ำหนักของคะแนนเชิงตำแหน่งเทียบกับคะแนนมูลค่าหมาก (material_score) — 0.05 = มีผลเสริมเบาๆ
 ## ไม่ทำให้ AI ยอมเสียหมากฟรีๆ แค่เพื่อได้ตำแหน่งดีขึ้นนิดหน่อย
@@ -97,51 +95,37 @@ static func _pawn_advance_bonus(row: int, side: int) -> float:
 ## จำลองตาเดินแบบรู้จักเลือด — เหมือน ChessRules.apply() แต่ "กิน" ไม่ได้ฆ่าทันทีเสมอไป
 ## คืน {"state": Array, "overrides": Dictionary} ให้ส่งต่อเป็นอินพุตของชั้นถัดไปในการค้นหา
 static func _apply_hp_aware(state: Array, from: Vector2i, to: Vector2i, ep_target: Vector2i, hp_overrides: Dictionary) -> Dictionary:
-	var piece := ChessRules.at(state, from)
-	if piece == null:
-		return {"state": ChessRules.copy_state(state), "overrides": hp_overrides.duplicate()}
-
-	# หาตัวที่จะโดนกิน (รวมกินผ่าน en passant) ด้วยวิธีเดียวกับที่ Board.try_move() ใช้จริง
-	var captured := ChessRules.at(state, to)
-	var is_en_passant := piece.piece_kind == ChessPiece.Kind.PAWN and to == ep_target and captured == null
-	if is_en_passant:
-		captured = ChessRules.at(state, Vector2i(to.x, from.y))
-
-	var new_overrides: Dictionary = hp_overrides.duplicate()
-
-	if captured == null:
-		# ไม่มีการกิน — พฤติกรรมเหมือน ChessRules.apply() เดิมทุกอย่าง ไม่ต้องยุ่งกับเลือดเลย
-		return {"state": ChessRules.apply(state, from, to, ep_target), "overrides": new_overrides}
-
-	# ตำแหน่งจริงของเหยื่อ — กินผ่าน (en passant) เหยื่อไม่ได้อยู่ที่ to แต่อยู่ข้างๆ
-	var captured_cell: Vector2i = to
-	if is_en_passant:
-		captured_cell = Vector2i(to.x, from.y)
-
-	var remaining_hp: float = _effective_hp(captured, hp_overrides) - PassiveSkills.compute_damage(piece, captured, state, captured_cell)
-
-	var lethal := remaining_hp <= 0.0
-
-	if lethal:
-		# ตายจริง — เหมือนเดิมทุกอย่าง ใช้ ChessRules.apply() ได้เลย (ลบเหยื่อ + ย้ายผู้โจมตีให้แล้ว)
-		new_overrides.erase(captured)  # ตายแล้วไม่ต้องมีสถานะเลือดค้างให้จำต่อในสายนี้อีก
-		return {"state": ChessRules.apply(state, from, to, ep_target), "overrides": new_overrides}
-
-	# ไม่ตาย — board_state ไม่เปลี่ยนเลย (เหมือน Board.try_move() ตอน piece_moved = false:
-	# ผู้โจมตีไม่ขยับเข้าไปแทนที่ เหยื่อยังยืนอยู่ที่เดิม) มีแค่เลือดจำลองของเหยื่อที่ลดลง
-	new_overrides[captured] = remaining_hp
-	return {"state": ChessRules.copy_state(state), "overrides": new_overrides}
+	return ChessRules.apply_combat(state, from, to, ep_target, hp_overrides)
 
 ## หาช่อง (cell) ของหมากทั้งหมดฝ่าย side ที่ "ใช้สกิลได้ตอนนี้" — เรียกที่ root เท่านั้น (state จริง
 ## ยังไม่ถูกจำลองอะไรเลย ค่า can_use_skill() ของหมากจริงจึงเชื่อถือได้ 100%)
 static func _skill_candidates(state: Array, side: int) -> Array:
 	var candidates: Array = []
+	if ChessRules.is_in_check(state, side):
+		return candidates
 	for row in range(state.size()):
 		for col in range(state[row].size()):
 			var piece: ChessPiece = state[row][col]
 			if piece != null and piece.side == side and piece.can_use_skill():
+				if not _skill_is_worthwhile(state, Vector2i(col, row), piece):
+					continue
 				candidates.append(Vector2i(col, row))
 	return candidates
+
+# Heal only serious injuries; do not spend a turn on tiny recovery or repeated buffs.
+static func _skill_is_worthwhile(state: Array, cell: Vector2i, piece: ChessPiece) -> bool:
+	match piece.piece_kind:
+		ChessPiece.Kind.PAWN, ChessPiece.Kind.BISHOP, ChessPiece.Kind.ROOK:
+			return piece.hp <= piece.max_hp * 0.5
+		ChessPiece.Kind.KING:
+			return piece.rally_targets(state).size() >= 2
+		ChessPiece.Kind.KNIGHT, ChessPiece.Kind.QUEEN:
+			if piece.attack_buff_multiplier > 1.0:
+				return false
+			for target in ChessRules.legal_moves(state, cell, ChessRules.NO_CELL):
+				if ChessRules.at(state, target) != null:
+					return true
+	return false
 
 ## จำลองผลของ "ใช้สกิล" แบบรู้จักเลือด (เหมือน _apply_hp_aware() แต่ไม่มีการเดิน/กิน) — คืน
 ## {"state", "overrides"} ให้ส่งต่อเป็นอินพุตของ _minimax() ชั้นถัดไปเหมือนตาเดินปกติทุกประการ
@@ -155,16 +139,14 @@ static func _apply_skill_aware(state: Array, cell: Vector2i, hp_overrides: Dicti
 
 	match piece.piece_kind:
 		ChessPiece.Kind.PAWN:
-			new_overrides[piece] = minf(_effective_hp(piece, hp_overrides) + 40.0, piece.max_hp)
+			new_overrides[piece] = minf(_effective_hp(piece, hp_overrides) + piece.self_heal_amount(), piece.max_hp)
 		ChessPiece.Kind.BISHOP:
-			new_overrides[piece] = piece.max_hp
+			new_overrides[piece] = minf(_effective_hp(piece, hp_overrides) + piece.self_heal_amount(), piece.max_hp)
 		ChessPiece.Kind.ROOK:
-			new_overrides[piece] = minf(_effective_hp(piece, hp_overrides) + 30.0, piece.max_hp)
+			new_overrides[piece] = minf(_effective_hp(piece, hp_overrides) + piece.fortify_amount(), piece.max_hp)
 		ChessPiece.Kind.KING:
-			for row in state:
-				for p in row:
-					if p != null and p.side == piece.side:
-						new_overrides[p] = minf(_effective_hp(p, hp_overrides) + 20.0, p.max_hp)
+			for target in piece.rally_targets(state, hp_overrides):
+				new_overrides[target] = minf(_effective_hp(target, hp_overrides) + piece.rally_heal_amount(), target.max_hp)
 		_:
 			pass  # ม้า/ควีน — ไม่มีผลต่อ overrides เลยตามที่อธิบายไว้ด้านบน
 
@@ -172,9 +154,9 @@ static func _apply_skill_aware(state: Array, cell: Vector2i, hp_overrides: Dicti
 
 ## หาตาเดินที่ดีที่สุดสำหรับฝ่าย side ที่ความลึก depth ชั้น
 ## คืน {} ถ้าไม่มีตาเดินให้เลือกเลย (ไม่ควรเกิด เพราะ Board._evaluate_status ควรจับจบเกมได้ก่อนแล้ว)
-static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int = 2) -> Dictionary:
+static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int = 2, allow_skills: bool = true) -> Dictionary:
 	var moves: Array = ChessRules.all_legal_moves(state, side, ep_target)
-	var skill_cells: Array = _skill_candidates(state, side)
+	var skill_cells: Array = _skill_candidates(state, side) if allow_skills else []
 	if moves.is_empty() and skill_cells.is_empty():
 		return {}
 
@@ -219,7 +201,7 @@ static func _minimax(state: Array, depth: int, side: int, alpha: float, beta: fl
 
 	# ค้นด้วย ep_target = NO_CELL เสมอ (ยกเว้นตาแรกสุดที่ best_move() รับมาจากสถานะจริง)
 	# เพราะไม่ได้ tracking ว่าตาไหนเพิ่งเดินเบี้ย 2 ช่องระหว่างจำลอง — ยอมรับเป็นข้อจำกัดของ AI ระดับนี้
-	var moves: Array = ChessRules.all_legal_moves(state, side, ChessRules.NO_CELL)
+	var moves: Array = ChessRules.all_legal_moves(state, side, ChessRules.NO_CELL, hp_overrides)
 	if moves.is_empty():
 		# ไม่มีตาเดิน = จบเกม เช็คว่ารุกฆาตหรืออับ
 		if ChessRules.is_in_check(state, side):
