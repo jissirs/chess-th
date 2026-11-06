@@ -1,0 +1,65 @@
+{
+  "purpose": "victim death vocalisations at impact",
+  "cast": [
+    {
+      "kind": "pawn",
+      "voice": "en-US-GuyNeural",
+      "event": "death",
+      "line": "Aagh... ah!",
+      "rate": "-18%",
+      "pitch": "+6Hz",
+      "duration_seconds": 1.335,
+      "rms": 0.183
+    },
+    {
+      "kind": "knight",
+      "voice": "en-US-ChristopherNeural",
+      "event": "death",
+      "line": "Aargh...!",
+      "rate": "-18%",
+      "pitch": "-5Hz",
+      "duration_seconds": 0.668,
+      "rms": 0.183
+    },
+    {
+      "kind": "bishop",
+      "voice": "en-GB-ThomasNeural",
+      "event": "death",
+      "line": "Argh... ah!",
+      "rate": "-18%",
+      "pitch": "+2Hz",
+      "duration_seconds": 1.115,
+      "rms": 0.145
+    },
+    {
+      "kind": "rook",
+      "voice": "en-US-RogerNeural",
+      "event": "death",
+      "line": "Arrgh...!",
+      "rate": "-18%",
+      "pitch": "-24Hz",
+      "duration_seconds": 0.539,
+      "rms": 0.21
+    },
+    {
+      "kind": "queen",
+      "voice": "en-GB-SoniaNeural",
+      "event": "death",
+      "line": "Aah... ah!",
+      "rate": "-18%",
+      "pitch": "+4Hz",
+      "duration_seconds": 1.14,
+      "rms": 0.21
+    },
+    {
+      "kind": "king",
+      "voice": "en-GB-RyanNeural",
+      "event": "death",
+      "line": "Aargh...!",
+      "rate": "-18%",
+      "pitch": "-20Hz",
+      "duration_seconds": 0.488,
+      "rms": 0.229
+    }
+  ]
+}

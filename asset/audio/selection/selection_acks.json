@@ -1,0 +1,65 @@
+{
+  "purpose": "energetic battle-ready selection vocalisations",
+  "cast": [
+    {
+      "kind": "pawn",
+      "voice": "en-US-GuyNeural",
+      "event": "selection",
+      "line": "Yah!",
+      "rate": "+18%",
+      "pitch": "+6Hz",
+      "duration_seconds": 0.476,
+      "rms": 0.278
+    },
+    {
+      "kind": "knight",
+      "voice": "en-US-ChristopherNeural",
+      "event": "selection",
+      "line": "Hyah!",
+      "rate": "+20%",
+      "pitch": "-5Hz",
+      "duration_seconds": 0.416,
+      "rms": 0.163
+    },
+    {
+      "kind": "bishop",
+      "voice": "en-GB-ThomasNeural",
+      "event": "selection",
+      "line": "Ha!",
+      "rate": "+14%",
+      "pitch": "+2Hz",
+      "duration_seconds": 0.397,
+      "rms": 0.205
+    },
+    {
+      "kind": "rook",
+      "voice": "en-US-RogerNeural",
+      "event": "selection",
+      "line": "Hah!",
+      "rate": "+16%",
+      "pitch": "-24Hz",
+      "duration_seconds": 0.442,
+      "rms": 0.27
+    },
+    {
+      "kind": "queen",
+      "voice": "en-GB-SoniaNeural",
+      "event": "selection",
+      "line": "Fire!",
+      "rate": "+18%",
+      "pitch": "+4Hz",
+      "duration_seconds": 0.465,
+      "rms": 0.312
+    },
+    {
+      "kind": "king",
+      "voice": "en-GB-RyanNeural",
+      "event": "selection",
+      "line": "Hah!",
+      "rate": "+10%",
+      "pitch": "-20Hz",
+      "duration_seconds": 0.414,
+      "rms": 0.259
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://clh1rfgvmuvdt"
+path="res://.godot/imported/runic_font.fnt-bf88d89f6b248cede3a861b81c67ab29.fontdata"
+
+[deps]
+
+source_file="res://asset/ui/components/fonts/runic_font.fnt"
+dest_files=["res://.godot/imported/runic_font.fnt-bf88d89f6b248cede3a861b81c67ab29.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2
