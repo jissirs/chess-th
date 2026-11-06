@@ -40,8 +40,10 @@ var fullmove_number: int = 1
 var game_over: bool = false
 ## [from, to] ของตาล่าสุด ว่างถ้ายังไม่มีใครเดิน
 var last_move: Array = []
+## รายละเอียดของตาล่าสุดสำหรับระบบคะแนน (ดู try_move ขั้นที่ 4) — ว่างถ้ายังไม่มีใครเดิน
+var last_move_info: Dictionary = {}
 ## จำนวนครั้งที่แต่ละตำแหน่งเกิดขึ้น (key จาก ChessRules.position_key) — ใช้ตัดสินเสมอแบบซ้ำตา
-const REPETITION_LIMIT := 3
+const REPETITION_LIMIT := ChessRules.REPETITION_LIMIT
 var position_counts: Dictionary = {}
 ## true ระหว่างที่หมากกำลังเลื่อนด้วย animation — กันไม่ให้คลิกเดินซ้อนจนสถานะสับสน
 var animating: bool = false
@@ -68,6 +70,7 @@ func _reset_game_state() -> void:
 	fullmove_number = 1
 	game_over = false
 	last_move = []
+	last_move_info = {}
 	animating = false
 	ai_skill_moves_remaining = 0
 	position_counts.clear()
@@ -194,6 +197,10 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 	var is_en_passant := is_pawn and to_cell == en_passant_target and captured == null
 	if is_en_passant:
 		captured = board_state[from_cell.y][to_cell.x]
+	# ข้อมูลไว้ให้ระบบคะแนน (ScoreRules) — ต้องจดก่อนแตะ board_state/has_moved เพราะหลังเดินค่าเหล่านี้เปลี่ยนไปแล้ว
+	var original_kind: int = piece.piece_kind
+	var was_unmoved: bool = not piece.has_moved
+	var is_castle: bool = piece.piece_kind == ChessPiece.Kind.KING and absi(to_cell.x - from_cell.x) == 2
 
 	# ---------- ขั้นที่ 1: ตัดสินผลการโจมตี (ถ้ามี) ก่อนแตะ board_state ----------
 
@@ -224,6 +231,7 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 	# piece_moved = ผู้โจมตีได้ขยับไปช่องปลายทางจริงไหมในตานี้ — false เฉพาะกรณี
 	# "โจมตีแล้วเหยื่อไม่ตาย" เท่านั้น (เหยื่อยังกีดขวางอยู่ ขยับเข้าไปแทนที่ไม่ได้)
 	var piece_moved: bool = captured == null or lethal
+	var captured_kind: int = captured.piece_kind if (captured != null and lethal) else -1
 
 	var move_tweens: Array = []
 
@@ -266,8 +274,10 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 	# ---------- ขั้นที่ 3: หลังเลื่อนเสร็จแล้วเท่านั้น ค่อยจัดการส่วนที่เหลือ ----------
 
 	# 3a) promote ก่อน (ถ้าเข้าเงื่อนไข) — เฉพาะกรณีขยับไปจริง เพราะโจมตีไม่ตายเบี้ยยังไม่ถึงแถวไหน
+	var promoted := false
 	if piece_moved and is_pawn and to_cell.y == ChessRules.promotion_row(piece.side):
 		piece = _promote(piece, to_cell, promote_to)
+		promoted = true
 
 	# 3b) ตั้งช่อง en passant ให้ตาถัดไป เฉพาะตอนเบี้ยเพิ่งเดินรวด 2 ช่องจริง
 	if piece_moved and is_pawn and absi(to_cell.y - from_cell.y) == 2:
@@ -291,6 +301,14 @@ func try_move(from_cell: Vector2i, to_cell: Vector2i, promote_to: int = ChessPie
 	side_to_move = ChessRules.opponent(side_to_move)
 
 	# ---------- ขั้นที่ 4: ส่ง signal ให้ UI ไปอัปเดต (ต้องมาหลังสุด) ----------
+	# last_move_info = รายละเอียดตานี้ให้ main.gd ส่งต่อให้ ScoreRules ให้คะแนนกลยุทธ์ (อ่านตอนรับ move_made)
+	# side = ฝ่ายที่เดิน (ไม่ใช่ side_to_move ที่สลับไปแล้ว)
+	last_move_info = {
+		"side": ChessRules.opponent(side_to_move), "piece": piece, "kind": original_kind,
+		"from": from_cell, "to": to_cell, "moved": piece_moved, "castle": is_castle and piece_moved,
+		"en_passant": is_en_passant and piece_moved, "promoted": promoted,
+		"first_move": was_unmoved and piece_moved, "captured_kind": captured_kind,
+	}
 	move_made.emit(from_cell, to_cell, piece)
 	turn_changed.emit(side_to_move)
 	_evaluate_status()  # เช็ค check / รุกฆาต / อับ ด้วย side_to_move ที่อัปเดตแล้ว

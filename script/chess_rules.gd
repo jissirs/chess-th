@@ -366,11 +366,16 @@ static func insufficient_material(state: Array) -> bool:
 	return false
 
 
+## ซ้ำตำแหน่งเดิมครบกี่ครั้งถึงเสมอ (Board นับจริง, ChessAI ใช้หลบ)
+const REPETITION_LIMIT := 3
+
 ## คีย์ข้อความแทน "ตำแหน่ง" หนึ่งตำแหน่ง ใช้นับว่าตำแหน่งเดิมซ้ำกี่ครั้ง (threefold repetition)
 ## ตำแหน่งเดียวกัน = หมากชนิด/ฝ่าย/เลือดเท่ากันทุกช่อง + ฝ่ายที่ถึงตา + ช่อง en passant เดียวกัน
 ## + สิทธิ์ castling เดิม (คิง/เรือที่ยังไม่เคยเดิน) — เลือดอยู่ในคีย์ด้วยเพราะเกมนี้มีระบบ HP
 ## ตำแหน่งที่เลือดต่างกันจึงไม่นับว่าซ้ำ (ไม่งั้นการโจมตีไม่ตายที่ไม่ขยับหมากจะโดนนับผิด)
-static func position_key(state: Array, side_to_move: int, ep_target: Vector2i) -> String:
+## hp_overrides / just_moved ใช้ตอน AI จำลองตาเดิน (ยังไม่ได้แก้ตัวหมากจริง): เลือดจำลองอยู่ใน hp_overrides
+## และหมากที่เพิ่งเดินในการจำลองยังมี has_moved = false จึงต้องบอกให้ถือว่า "เดินแล้ว" เพื่อให้คีย์ตรงกับของจริง
+static func position_key(state: Array, side_to_move: int, ep_target: Vector2i, hp_overrides: Dictionary = {}, just_moved: ChessPiece = null) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for row in range(ROWS):
 		for col in range(COLS):
@@ -378,9 +383,11 @@ static func position_key(state: Array, side_to_move: int, ep_target: Vector2i) -
 			if piece == null:
 				continue
 			var castle_flag := 0
-			if (piece.piece_kind == ChessPiece.Kind.KING or piece.piece_kind == ChessPiece.Kind.ROOK) and not piece.has_moved:
+			if (piece.piece_kind == ChessPiece.Kind.KING or piece.piece_kind == ChessPiece.Kind.ROOK) \
+					and not piece.has_moved and piece != just_moved:
 				castle_flag = 1
-			parts.append("%d,%d:%d%d%d:%d" % [col, row, piece.piece_kind, piece.side, castle_flag, int(round(piece.hp))])
+			var hp: float = hp_overrides.get(piece, piece.hp)
+			parts.append("%d,%d:%d%d%d:%d" % [col, row, piece.piece_kind, piece.side, castle_flag, int(round(hp))])
 	return "%d|%d,%d|%s" % [side_to_move, ep_target.x, ep_target.y, ";".join(parts)]
 
 

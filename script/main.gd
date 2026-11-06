@@ -18,14 +18,10 @@ const BG_SWAY_DURATION := 4.0   # วินาทีต่อช่วงกา�
 const PAUSE_FADE_DURATION := 0.25
 const SETTINGS_SCENE := preload("res://Scene/settings.tscn")
 
-const CAPTURE_POINTS := {
-	ChessPiece.Kind.PAWN: 100,
-	ChessPiece.Kind.KNIGHT: 300,
-	ChessPiece.Kind.BISHOP: 300,
-	ChessPiece.Kind.ROOK: 500,
-	ChessPiece.Kind.QUEEN: 900,
-}
-const VICTORY_BONUS := 1000
+## ตารางคะแนนทั้งหมดอยู่ใน score_rules.gd (ScoreRules) — main.gd แค่ฟังเหตุการณ์แล้วสั่งให้คะแนน
+const ScoreRules := preload("res://script/score_rules.gd")
+const CAPTURE_POINTS := ScoreRules.CAPTURE_POINTS
+const VICTORY_BONUS := ScoreRules.VICTORY_BONUS
 const VICTORY_BANNER := preload("res://asset/wictory.png")
 const DEFEAT_BANNER := preload("res://asset/loose.png")
 
@@ -61,6 +57,17 @@ var _finished: bool = false
 var _turn_time_remaining: float = TURN_TIME_LIMIT
 var _score: int = 0  # Weighted capture points plus a one-time victory bonus (ผู้เล่น 1 = ฝ่ายขาว)
 var _score_p2: int = 0  # ผู้เล่น 2 (ฝ่ายดำ) — นับเฉพาะโหมด PVP ส่วนโหมด PVC ฝ่ายดำคือ AI ไม่มีคะแนน
+## คะแนนแยกหมวดต่อฝ่าย (ดู ScoreRules.CATEGORIES) ไว้แสดงรายละเอียดบนหน้าจอจบเกม — รวมแล้วเท่า _score / _score_p2
+var _breakdown: Dictionary = {
+	ChessPiece.Team.WHITE: {"CAPTURES": 0, "STRATEGY": 0, "SURVIVAL": 0, "VICTORY": 0},
+	ChessPiece.Team.BLACK: {"CAPTURES": 0, "STRATEGY": 0, "SURVIVAL": 0, "VICTORY": 0},
+}
+## id ของหมากที่เคยได้คะแนนยึดกลางกระดานแล้ว (ได้ตัวละครั้งเดียว)
+var _center_seen: Dictionary = {}
+## จำนวนตาที่แต่ละฝ่ายเดินจริง — โบนัสอัตรารอดต้องเดินให้พอ (ScoreRules.MIN_MOVES_FOR_FULL_SURVIVAL) ถึงได้เต็ม
+var _moves_played: Dictionary = {ChessPiece.Team.WHITE: 0, ChessPiece.Team.BLACK: 0}
+var _end_breakdown_grid: GridContainer
+var _breakdown_cells: Dictionary = {}  # "CAPTURES" → [Label ผู้เล่น 1, Label ผู้เล่น 2]
 
 func _is_pvp() -> bool:
 	return GameManager.game_mode == "PVP"
@@ -92,6 +99,7 @@ func _ready():
 	StatsManager.achievement_unlocked.connect(_on_achievement_unlocked)
 	board.turn_changed.connect(_on_turn_changed_reset_timer)
 	board.move_made.connect(_on_move_made_update_team_counts)
+	board.move_made.connect(_on_move_made_award_strategy)
 	board.pieces_ready.connect(_update_team_counts)
 	_update_score_label()
 	_update_timer_label()
@@ -175,11 +183,15 @@ func _on_game_ended(result: String, winner: int) -> void:
 		return
 	_finished = true
 	AudioManager.stop_greeting()
+	# อัตรารอดของทีม: ได้ทุกฝ่ายที่มีคะแนน ไม่ว่าชนะ แพ้ หรือเสมอ (ทีมที่ยังเหลือหมากมาก/เลือดดีได้มากกว่า)
+	for side in [ChessPiece.Team.WHITE, ChessPiece.Team.BLACK]:
+		if _scores_side(side):
+			_award_score(ScoreRules.survival_bonus(board.board_state, side, _moves_played[side]), side, "SURVIVAL")
 	if result in ["checkmate", "timeout"]:
 		if winner == ChessPiece.Team.WHITE:
-			_award_score(VICTORY_BONUS, ChessPiece.Team.WHITE)
+			_award_score(VICTORY_BONUS, ChessPiece.Team.WHITE, "VICTORY")
 		elif _is_pvp():
-			_award_score(VICTORY_BONUS, ChessPiece.Team.BLACK)
+			_award_score(VICTORY_BONUS, ChessPiece.Team.BLACK, "VICTORY")
 	if GameManager.game_mode == "PVC":
 		if winner == ChessPiece.Team.WHITE:
 			StatsManager.record_game_ended(true)
@@ -245,9 +257,50 @@ func _build_end_screen() -> void:
 	box.add_child(_end_record_label)
 	box.move_child(_end_record_label, _end_score_row.get_index())  # อยู่เหนือแถวคะแนน
 
+	_build_breakdown_grid(box, font, pvp)
+
 	result_label.add_theme_font_size_override("font_size", 28)
 	result_label.add_theme_color_override("font_outline_color", Color(0.015, 0.025, 0.05))
 	result_label.add_theme_constant_override("outline_size", 4)
+
+## ตารางรายละเอียดคะแนนแยกหมวดตอนจบเกม: CAPTURES / STRATEGY / SURVIVAL / VICTORY
+## PVC = 2 คอลัมน์ (ชื่อหมวด, คะแนน) PVP = 3 คอลัมน์ (ชื่อหมวด, P1, P2) วางต่อจากแถวคะแนนรวม
+func _build_breakdown_grid(box: VBoxContainer, font: Font, pvp: bool) -> void:
+	_end_breakdown_grid = GridContainer.new()
+	_end_breakdown_grid.columns = 3 if pvp else 2
+	_end_breakdown_grid.add_theme_constant_override("h_separation", 60)
+	_end_breakdown_grid.add_theme_constant_override("v_separation", 0)
+	_end_breakdown_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_end_breakdown_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_end_breakdown_grid.visible = false
+	if pvp:
+		_end_breakdown_grid.add_child(_breakdown_label("", Color.WHITE, font, HORIZONTAL_ALIGNMENT_LEFT))
+		_end_breakdown_grid.add_child(_breakdown_label("P1", Color(0.65, 0.94, 1.0), font, HORIZONTAL_ALIGNMENT_RIGHT))
+		_end_breakdown_grid.add_child(_breakdown_label("P2", Color(1.0, 0.7, 0.45), font, HORIZONTAL_ALIGNMENT_RIGHT))
+	for category in ScoreRules.CATEGORIES:
+		_end_breakdown_grid.add_child(_breakdown_label(category, Color(0.65, 0.94, 1.0), font, HORIZONTAL_ALIGNMENT_LEFT))
+		var cells: Array = []
+		for i in (2 if pvp else 1):
+			var value := _breakdown_label("0", Color.WHITE, font, HORIZONTAL_ALIGNMENT_RIGHT)
+			value.custom_minimum_size = Vector2(110, 0)
+			_end_breakdown_grid.add_child(value)
+			cells.append(value)
+		_breakdown_cells[category] = cells
+	box.add_child(_end_breakdown_grid)
+	var anchor: Control = _end_high_row if _end_high_row != null else _end_score_row
+	box.move_child(_end_breakdown_grid, anchor.get_index() + 1)
+
+func _breakdown_label(text: String, color: Color, font: Font, align: HorizontalAlignment) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = align
+	label.add_theme_font_override("font", font)
+	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color(0.015, 0.025, 0.05))
+	label.add_theme_constant_override("outline_size", 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
 
 func _add_score_column(row: HBoxContainer, title: String, color: Color, font: Font, scale: float = 1.0) -> Label:
 	var column := VBoxContainer.new()
@@ -277,11 +330,22 @@ func _show_end_screen(player_won: bool, decisive: bool) -> void:
 	_end_score_value.text = str(_score)
 	_end_high_value.text = str(StatsManager.high_score)
 	_end_score_row.visible = true
-	var half_height := 440.0
+	# หน้าจอจบเกมมีของเยอะ — ย่อป้ายและช่องไฟลงให้พอดีจอ (เมนู pause ปกติไม่ถูกแตะ)
+	_end_banner.custom_minimum_size = Vector2(0, 240)
+	$UI/PauseMenu/PausePanel/VBoxContainer.add_theme_constant_override("separation", 6)
+	var half_height := 360.0
 	if _is_pvp():
 		_end_score_p2_value.text = str(_score_p2)
 		_end_high_row.visible = true
-		half_height = 490.0  # แถวสถิติสูงสุดเพิ่มอีกแถว
+		half_height = 400.0  # แถวสถิติสูงสุดเพิ่มอีกแถว
+	# รายละเอียดคะแนนแยกหมวด (บวกความสูงตารางเข้าไปด้วย)
+	for category in ScoreRules.CATEGORIES:
+		var cells: Array = _breakdown_cells[category]
+		cells[0].text = str(_breakdown[ChessPiece.Team.WHITE][category])
+		if _is_pvp():
+			cells[1].text = str(_breakdown[ChessPiece.Team.BLACK][category])
+	_end_breakdown_grid.visible = true
+	half_height += 85.0 if _is_pvp() else 70.0
 	# ป้าย + แถวคะแนนทำให้สูงกว่าเมนู pause ปกติ — ขยายแผงให้พอดีปุ่มทั้ง 3
 	var record_text := _new_record_text()
 	if record_text != "":
@@ -360,8 +424,11 @@ func _on_check_alerted(_side: int) -> void:
 	AudioManager.play_sfx(SFX_CHECK)
 
 ## นับจำนวนครั้งที่ใช้ Active Skill สะสม (ฟังจาก signal Board.skill_used ที่มีอยู่แล้วตั้งแต่ตอนที่ 11.9)
-func _on_skill_used_stats(_piece: ChessPiece, _effect_kind: String) -> void:
+func _on_skill_used_stats(piece: ChessPiece, _effect_kind: String) -> void:
 	StatsManager.record_skill_used()
+	if piece != null and _scores_side(piece.side):
+		_award_score(ScoreRules.SKILL_POINTS, piece.side, "STRATEGY")
+		_show_score_toast("+%d SKILL" % ScoreRules.SKILL_POINTS, piece.side, 0)
 
 ## โชว์ toast ข้อความลอยขึ้นแจ้งเตือนตอนปลดล็อก achievement ใหม่ — สร้าง Label ชั่วคราวด้วยโค้ด
 ## ล้วนๆ ไม่ต้องมี node เตรียมไว้ในฉากเลย (เทคนิคเดียวกับ DamagePopup ตอนที่ 11.5 แต่เป็น UI แทนโลก 2D)
@@ -439,10 +506,52 @@ func _update_timer_label() -> void:
 	timer_label.text = "%02d:%02d" % [seconds / 60, seconds % 60]
 	timer_label.modulate = Color(1.0, 0.35, 0.3) if seconds <= 5 else Color.WHITE
 
+## ฝ่ายนี้มีคะแนนไหม — ฝ่ายขาวเสมอ (ผู้เล่น 1) ฝ่ายดำเฉพาะ PVP (โหมด PVC ฝ่ายดำคือ AI)
+func _scores_side(side: int) -> bool:
+	return side == ChessPiece.Team.WHITE or _is_pvp()
+
+## ให้คะแนนกลยุทธ์ของตาที่เพิ่งเดิน (รุก, castling, เลื่อนขั้น, พัฒนาหมาก, ยึดกลาง, แลกคุ้ม, กินปลอดภัย)
+## ฟังจาก Board.move_made — รายละเอียดตาอยู่ใน board.last_move_info, การคำนวณอยู่ใน ScoreRules.move_awards()
+func _on_move_made_award_strategy(_from_cell: Vector2i, _to_cell: Vector2i, _piece: ChessPiece) -> void:
+	var info: Dictionary = board.last_move_info
+	if info.is_empty():
+		return
+	_moves_played[info.side] += 1
+	if not _scores_side(info.side):
+		return
+	var slot := 0
+	for award in ScoreRules.move_awards(board.board_state, info, _center_seen):
+		_award_score(award.points, info.side, "STRATEGY")
+		_show_score_toast("+%d %s" % [award.points, award.label], info.side, slot)
+		slot += 1
+
+## ข้อความคะแนนลอยขึ้นข้างแผงคะแนนของผู้เล่น (+50 CHECK ฯลฯ) หลายรายการในตาเดียวเรียงต่อกันตาม slot
+func _show_score_toast(text: String, side: int, slot: int) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5) if side == ChessPiece.Team.WHITE else Color(1.0, 0.7, 0.45))
+	label.add_theme_color_override("font_outline_color", Color(0.015, 0.025, 0.05))
+	label.add_theme_constant_override("outline_size", 6)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel: Control = $UI/ScorePanel if side == ChessPiece.Team.WHITE else $UI/ScorePanelP2
+	label.position = panel.position + Vector2(20, 300 + slot * 34)
+	label.modulate.a = 0.0
+	$UI.add_child(label)
+	$UI.move_child(pause_menu, -1)  # เมนู pause ต้องอยู่บนสุดเสมอ (ดู _ready)
+	var tween := create_tween()
+	tween.tween_property(label, "modulate:a", 1.0, 0.15)
+	tween.parallel().tween_property(label, "position:y", label.position.y - 30.0, 1.6)
+	tween.tween_interval(0.6)
+	tween.tween_property(label, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(label.queue_free)
+
 ## ให้คะแนนฝ่ายที่กินหมาก — ฝ่ายขาว = ผู้เล่น 1 (และคะแนนเดียวของโหมด PVC), ฝ่ายดำ = ผู้เล่น 2 (เฉพาะ PVP)
-func _award_score(points: int, side: int = ChessPiece.Team.WHITE) -> void:
+## category = หมวดคะแนน (ScoreRules.CATEGORIES) — แยกไว้โชว์รายละเอียดตอนจบเกม ไม่กระทบคะแนนรวม
+func _award_score(points: int, side: int = ChessPiece.Team.WHITE, category: String = "CAPTURES") -> void:
 	if points <= 0:
 		return
+	_breakdown[side][category] = int(_breakdown[side].get(category, 0)) + points
 	if side == ChessPiece.Team.BLACK:
 		_score_p2 += points
 		StatsManager.record_score(_score_p2)  # HIGH SCORE ใช้ร่วมกัน — คะแนนของใครสูงกว่าสถิติก็ทำลายสถิติเดียวกัน
@@ -468,7 +577,9 @@ func _setup_pvp_hud() -> void:
 		_p2_score_digits = $UI/ScorePanelP2/Frame2/Digits
 
 ## แสดงคะแนนด้วยรูปเลขรูนเรืองแสง (asset/digits) แทนตัวอักษร — score_label ยังเก็บข้อความไว้เป็นค่าจริง
-func _show_score_digits(text: String, row: HBoxContainer) -> void:
+func _show_score_digits(text: String, row: HBoxContainer = null) -> void:
+	if row == null:
+		row = $UI/ScorePanel/Frame2/Digits  # ค่าเริ่มต้น = แถวตัวเลขของผู้เล่น 1
 	for child in row.get_children():
 		row.remove_child(child)
 		child.queue_free()

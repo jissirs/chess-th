@@ -33,7 +33,7 @@ func _maybe_take_turn(side: int) -> void:
 	if board.game_over or board.side_to_move != AI_SIDE:
 		return
 
-	var action: Dictionary = ChessAI.best_move(board.board_state, AI_SIDE, board.en_passant_target, GameManager.ai_search_depth(),board.ai_skill_moves_remaining <= 0)
+	var action: Dictionary = ChessAI.best_move(board.board_state, AI_SIDE, board.en_passant_target, GameManager.ai_search_depth(), board.ai_skill_moves_remaining <= 0, board.position_counts)
 	if action.is_empty():
 		return  # ไม่มีตาเดิน/สกิลให้เลือกเลย (ไม่ควรเกิด เพราะ Board._evaluate_status ควรจับจบเกมได้ก่อนหน้านี้แล้ว)
 	if action.get("type", "") == "skill":

@@ -38,6 +38,9 @@ const CHECKMATE_SCORE := 9999.0
 ## Require a meaningful benefit over moving before spending a limited skill.
 const SKILL_TIEBREAK_PENALTY := 0.15
 
+## หักคะแนนต่อ 1 ครั้งที่ตำแหน่งหลังเดินเคยเกิดมาแล้ว (หน่วยเทียบเท่าเบี้ย) — เล็กพอไม่ให้ยอมเสียหมากเพราะเลี่ยงซ้ำ
+const REPEAT_PENALTY := 0.3
+
 ## น้ำหนักของคะแนนเชิงตำแหน่งเทียบกับคะแนนมูลค่าหมาก (material_score) — 0.05 = มีผลเสริมเบาๆ
 ## ไม่ทำให้ AI ยอมเสียหมากฟรีๆ แค่เพื่อได้ตำแหน่งดีขึ้นนิดหน่อย
 const POSITIONAL_WEIGHT := 0.05
@@ -154,7 +157,9 @@ static func _apply_skill_aware(state: Array, cell: Vector2i, hp_overrides: Dicti
 
 ## หาตาเดินที่ดีที่สุดสำหรับฝ่าย side ที่ความลึก depth ชั้น
 ## คืน {} ถ้าไม่มีตาเดินให้เลือกเลย (ไม่ควรเกิด เพราะ Board._evaluate_status ควรจับจบเกมได้ก่อนแล้ว)
-static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int = 2, allow_skills: bool = true) -> Dictionary:
+## position_counts = ประวัติตำแหน่งที่เกิดแล้วในเกมจริง (Board.position_counts) — ใช้หลบการเสมอแบบซ้ำตา 3 ครั้ง:
+## ตาที่จะทำให้ตำแหน่งซ้ำครบ 3 ถูกให้คะแนนเท่ากับ "เสมอ" (0) ถ้า AI ได้เปรียบจะเลือกตาอื่น ถ้าเสียเปรียบจะยอมเสมอเอง
+static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int = 2, allow_skills: bool = true, position_counts: Dictionary = {}) -> Dictionary:
 	var moves: Array = ChessRules.all_legal_moves(state, side, ep_target)
 	var skill_cells: Array = _skill_candidates(state, side) if allow_skills else []
 	if moves.is_empty() and skill_cells.is_empty():
@@ -168,6 +173,11 @@ static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int =
 		# เริ่มจาก overrides ว่างเปล่า (ตอนนี้ยังไม่มีการจำลองใดๆ มาก่อนหน้า) piece.hp จริงยังเชื่อถือได้
 		var result := _apply_hp_aware(state, move.from, move.to, ep_target, {})
 		var score := _minimax(result.state, depth - 1, ChessRules.opponent(side), -INF, INF, result.overrides)
+		var moved: ChessPiece = state[move.from.y][move.from.x]
+		var ep_after := ChessRules.NO_CELL
+		if moved != null and moved.piece_kind == ChessPiece.Kind.PAWN and absi(move.to.y - move.from.y) == 2:
+			ep_after = Vector2i(move.from.x, (move.from.y + move.to.y) / 2)
+		score = _repetition_adjusted(score, result, side, ep_after, moved, position_counts)
 		var better: bool = score > best_score if maximizing else score < best_score
 		if better:
 			best_score = score
@@ -179,6 +189,7 @@ static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int =
 	for cell in skill_cells:
 		var result := _apply_skill_aware(state, cell, {})
 		var score := _minimax(result.state, depth - 1, ChessRules.opponent(side), -INF, INF, result.overrides)
+		score = _repetition_adjusted(score, result, side, ChessRules.NO_CELL, null, position_counts)
 		# หักคะแนนเล็กน้อย (ไปทางที่แย่ลงสำหรับฝ่าย side) กันสกิลที่ไม่มีผลจริงชนะเสมอกับเดินเฉยๆ
 		score += -SKILL_TIEBREAK_PENALTY if maximizing else SKILL_TIEBREAK_PENALTY
 		var better: bool = score > best_score if maximizing else score < best_score
@@ -191,6 +202,20 @@ static func best_move(state: Array, side: int, ep_target: Vector2i, depth: int =
 
 	# สุ่มในบรรดาตัวเลือกที่ดีที่สุดเท่าๆ กัน กัน AI เดินซ้ำแบบเดิมทุกครั้งที่เจอสถานการณ์เดียวกัน
 	return best_actions[randi() % best_actions.size()]
+
+## ปรับคะแนนของตาเดินตามประวัติตำแหน่ง: ตำแหน่งหลังเดินที่เคยเกิดมาแล้ว 2 ครั้ง = ครั้งที่ 3 = เสมอ (คะแนน 0)
+## ที่เคยเกิดแล้ว 1 ครั้งหักคะแนนเล็กน้อยกันวนซ้ำเปล่าๆ (หักไปทางที่แย่ลงสำหรับฝ่ายที่กำลังเดิน)
+## key ต้องตรงกับที่ Board._evaluate_status() ใช้ — คือตำแหน่งหลังเดิน โดยฝ่ายตรงข้ามถึงตา
+static func _repetition_adjusted(score: float, result: Dictionary, side: int, ep_after: Vector2i, moved: ChessPiece, position_counts: Dictionary) -> float:
+	if position_counts.is_empty():
+		return score
+	var key := ChessRules.position_key(result.state, ChessRules.opponent(side), ep_after, result.overrides, moved)
+	var seen: int = int(position_counts.get(key, 0))
+	if seen >= ChessRules.REPETITION_LIMIT - 1:
+		return 0.0
+	if seen > 0:
+		return score - REPEAT_PENALTY * seen if side == ChessPiece.Team.BLACK else score + REPEAT_PENALTY * seen
+	return score
 
 ## minimax แบบมี alpha-beta pruning ตัดกิ่งที่รู้แล้วว่าอีกฝ่ายไม่มีทางเลือกมา
 ## side คือฝ่ายที่ "กำลังจะเดิน" ในชั้นนี้ (สลับไปมาทุกชั้นตามธรรมชาติของเกม)

@@ -4626,8 +4626,7 @@ signal ทั้งหมดใน `_ready()` ไม่ error และการ
 | เล่นโหมด PVC จนชนะ AI | `games_won` เพิ่มขึ้น 1, ถ้าครบ 10 ครั้งจะได้ achievement "Champion" |
 | เล่นโหมด PVP จนจบเกม | `games_played` เพิ่มขึ้นแต่ `games_won`/`games_lost` ไม่ขยับ (ไม่มีฝ่าย "ผู้เล่น" ตายตัว) |
 
-> **หมายเหตุ:** ยังไม่เก็บ "สกิลที่ใช้บ่อยสุด" แยกตามชนิดหมาก (มีแค่ยอดรวม `total_skills_used`) และไม่มีหน้าจอ
-> "ดูสถิติทั้งหมด" (เคยทำแล้วเอาออกภายหลัง — ดูหมายเหตุท้าย 11.38)
+> **หมายเหตุ:** ยังไม่เก็บ "สกิลที่ใช้บ่อยสุด" แยกตามชนิดหมาก (มีแค่ยอดรวม `total_skills_used`)
 
 > **ทำใหม่แล้ว:** AI Difficulty ที่เคยถอดออกจากตอนนี้ ทำกลับมาใหม่ในตอนที่ 11.38 (EASY/NORMAL/HARD
 > เก็บที่ `GameManager.ai_difficulty` เซฟลงไฟล์ ปุ่มสร้างด้วยโค้ดใน `settings.gd`) — โค้ด `const SEARCH_DEPTH := 2`
@@ -5813,7 +5812,8 @@ godot --headless --path . --script res://tests/score_hud.gd
 | `pause_settings.gd`, `settings_navigation.gd`, `settings_transition.gd` | ปุ่ม Settings ในเมนู Pause และการเปลี่ยนฉาก |
 | `turn_timer.gd` | ตัวจับเวลาต่อตา |
 | `regressions.gd`, `ai_skill_balance.gd` | กติกา/สกิล/AI |
-| `new_features.gd` | ซ้ำตา 3 ครั้ง, HIGH SCORE แยกโหมด, NEW RECORD!, ระดับความยาก AI ใน Settings (ดู 11.35–11.38) |
+| `scoring_rules.gd` | คะแนนกลยุทธ์แต่ละแบบ, อัตรารอดของทีม, โบนัสรอดลดลงถ้าเดินไม่ถึง 20 ตา, คะแนนแยกหมวดรวมเท่าคะแนนรวมในเกมจริง (ดู 11.39) |
+| `ai_repetition.gd` | AI ได้เปรียบไม่เลือกตาที่ทำให้ซ้ำครบ 3 / AI เสียเปรียบยอมเสมอ / คีย์ตำแหน่งของ AI ตรงกับของ Board (ดู 11.35) |
 
 > `--script` ในโหมดเช็คทีละไฟล์ (`--check-only`) จะฟ้อง `Identifier not found: GameManager` ฯลฯ ทั้งที่ไม่ใช่บั๊ก เพราะ
 > Autoload ไม่ถูกโหลดในโหมดนั้น — ให้ใช้รันเทสต์ด้วย `--script` ธรรมดาตามด้านบนแทน
@@ -5866,6 +5866,36 @@ var position_counts: Dictionary = {}
 			return "ซ้ำตำแหน่งเดิม 3 ครั้ง — เสมอ"
 ```
 หน้าจอจบเกมถือเป็น "ไม่มีผู้ชนะ" เหมือนอับ/50 ตา (ไม่แสดงป้าย VICTORY/LOSE)
+
+**STEP 4 — ให้ AI หลบ/ยอมรับการเสมอแบบซ้ำตา** (`chess_ai.gd`, `ai_player.gd`)
+
+ถ้า AI ไม่รู้จักประวัติตำแหน่ง ตอนได้เปรียบมันอาจเดินวนซ้ำจนเสมอเอง จึงส่งประวัติ (`Board.position_counts`) เข้า `best_move()`:
+- ตาเดินที่ทำให้ตำแหน่งซ้ำครบ 3 → ให้คะแนน **0 (เสมอ)** แทนคะแนนจริง: ถ้า AI ได้เปรียบ (คะแนน > 0) จะเลือกตาอื่น
+  ถ้า AI เสียเปรียบ (คะแนน < 0) จะยอมเสมอเอง (0 ดีกว่าแพ้)
+- ตำแหน่งที่เคยเกิดแล้ว 1 ครั้ง → หักคะแนน `REPEAT_PENALTY = 0.3` (เบี้ยหนึ่งตัวมีค่า 1.0) กันวนซ้ำเปล่าๆ แต่ไม่มากพอให้ยอมเสียหมาก
+```gdscript
+# chess_rules.gd: const REPETITION_LIMIT := 3  (Board.gd ใช้ค่าเดียวกัน)
+# position_key(..., hp_overrides := {}, just_moved := null) — รับเลือดจำลอง และหมากที่เพิ่งเดินในการจำลอง
+#   (has_moved ของมันยังเป็น false เพราะ AI ไม่แตะตัวหมากจริง) ให้คีย์ตรงกับที่ Board บันทึกหลังเดินจริง
+
+# chess_ai.gd
+static func best_move(state, side, ep_target, depth := 2, allow_skills := true, position_counts := {}) -> Dictionary:
+	# ...ต่อท้ายการคำนวณ score ของทุกตาเดินและสกิล:
+	score = _repetition_adjusted(score, result, side, ep_after, moved, position_counts)
+
+static func _repetition_adjusted(score, result, side, ep_after, moved, position_counts) -> float:
+	if position_counts.is_empty():
+		return score
+	var key := ChessRules.position_key(result.state, ChessRules.opponent(side), ep_after, result.overrides, moved)
+	var seen: int = int(position_counts.get(key, 0))
+	if seen >= ChessRules.REPETITION_LIMIT - 1:
+		return 0.0
+	if seen > 0:
+		return score - REPEAT_PENALTY * seen if side == ChessPiece.Team.BLACK else score + REPEAT_PENALTY * seen
+	return score
+```
+`ai_player.gd` ส่ง `board.position_counts` เป็นอาร์กิวเมนต์สุดท้ายของ `ChessAI.best_move(...)` ข้อจำกัด: ตรวจเฉพาะตาของ AI เอง
+ไม่ได้มองว่าตาตอบโต้ของผู้เล่นจะทำให้ซ้ำครบ 3 (เรียกชั้นลึกต้องจำลองคีย์ทุกโหนด ซึ่งช้าลงมาก)
 
 ### 11.36 HIGH SCORE แยกตามโหมด
 
@@ -5962,8 +5992,114 @@ func ai_search_depth() -> int:
 (มีผลตั้งแต่ตาถัดไปของ AI) เก็บปุ่มไว้ใน `difficulty_buttons` ให้เทสต์อ่านได้
 **`Scene/settings.tscn`** — เลื่อนปุ่ม Quit (`BackButton`) ลงมา `offset_top = 820`, `offset_bottom = 1005` เพื่อเว้นที่ให้แถวใหม่
 
-> **หน้าดูสถิติ (ปุ่ม STATS) ถูกเอาออกแล้ว** — เคยมีฉาก `Scene/stats.tscn` กับปุ่มมุมขวาบนของเมนูหลัก ตอนนี้ไม่มีแล้ว
-> ส่วน `StatsManager` ยังอยู่ เพราะ HIGH SCORE, NEW RECORD! และ achievement ใช้มัน
+### 11.39 ระบบคะแนนหลายหมวด: กลยุทธ์ วิธีเดิน และอัตราการรอดของทีม
+
+เดิมคะแนนมาจากการกินหมาก (และโบนัสชนะ) เท่านั้น ตอนนี้คะแนนมา 4 หมวด แยกเก็บเพื่อโชว์รายละเอียดตอนจบเกม
+ตรรกะทั้งหมดอยู่ในไฟล์ใหม่ `script/score_rules.gd` (ไม่ผูก node เหมือน `chess_rules.gd`) ส่วน `main.gd` แค่ฟังเหตุการณ์แล้วสั่งให้คะแนน
+
+| หมวด | ได้เมื่อไหร่ | คะแนน |
+|---|---|---|
+| **CAPTURES** | กินหมากตายตามมูลค่า | เบี้ย 100 · ม้า/บิชอป 300 · เรือ 500 · ควีน 900 |
+| **STRATEGY** | รุก (CHECK) | +50 |
+| | castling | +100 |
+| | en passant | +100 |
+| | เลื่อนขั้นเบี้ย (PROMOTION) | +300 |
+| | ม้า/บิชอปออกจากแถวหลังครั้งแรก (DEVELOP) | +30 |
+| | หมากเข้ากลางกระดาน d4/e4/d5/e5 (CENTER) — ตัวละครั้งเดียว กันเดินเข้าออกปั่นคะแนน | +20 |
+| | กินตัวที่มูลค่าสูงกว่าด้วยตัวที่ถูกกว่า (GOOD TRADE) | +60 |
+| | กินแล้วหมากที่กินไม่โดนกินกลับ (CLEAN CAPTURE) | +40 |
+| | ใช้ Active Skill | +25 |
+| **SURVIVAL** | จบเกม — อัตรารอดของทีม = ครึ่งหนึ่งจากจำนวนหมากที่เหลือ (จาก 16) อีกครึ่งจากมูลค่าหมากถ่วงด้วยเลือด | สูงสุด 1500 |
+| | ไม่เสียหมากเลยสักตัว (FLAWLESS) | +500 |
+| **VICTORY** | รุกฆาต / คู่แข่งหมดเวลา | +1000 |
+
+- โหมด PVC นับเฉพาะผู้เล่น (ฝ่ายขาว) ส่วน PVP นับทั้งสองฝ่ายแยกกัน
+- **โบนัสรอดได้ทุกฝ่าย** ไม่ว่าชนะ แพ้ หรือเสมอ ฝ่ายที่หมากเหลือมาก/เลือดดีได้มากกว่า
+- กันการนั่งเฉยๆ: โบนัสรอดคูณด้วย `moves_played / 20` (สูงสุด 1) ฝ่ายที่เดินไม่ถึง 20 ตาได้ลดลงตามสัดส่วน
+  (เช่น ปล่อยหมดเวลาจนซ้ำตำแหน่งเสมอ ก็ไม่ได้โบนัสรอดฟรี)
+- โจมตีไม่ตาย (หมากไม่ขยับ) ไม่ได้คะแนนกลยุทธ์
+
+**STEP 1 — `script/score_rules.gd`** (ไฟล์ใหม่ ไม่ใช้ `class_name` เรียกผ่าน `preload` เพื่อไม่ต้องรอ cache คลาสของ Godot)
+ฟังก์ชันหลัก: `move_awards(state, info, center_seen)` คืนรายการ `{label, points}` ของตาที่เพิ่งเดิน,
+`survival_rate(state, side)`, `pieces_alive(state, side)`, `survival_bonus(state, side, moves_played)` ค่าคะแนนทุกตัวเป็นค่าคงที่ด้านบนไฟล์ ปรับสมดุลได้ที่นั่น
+
+**STEP 2 — `script/Board.gd`** จดรายละเอียดตานี้ไว้ให้ระบบคะแนน (ต้องจดก่อนแก้ `board_state`/`has_moved`):
+```gdscript
+var last_move_info: Dictionary = {}   # reset ใน _reset_game_state()
+
+# ใน try_move() ต่อจาก is_en_passant:
+	var original_kind: int = piece.piece_kind
+	var was_unmoved: bool = not piece.has_moved
+	var is_castle: bool = piece.piece_kind == ChessPiece.Kind.KING and absi(to_cell.x - from_cell.x) == 2
+# ต่อจาก piece_moved:
+	var captured_kind: int = captured.piece_kind if (captured != null and lethal) else -1
+# ในขั้น 3a: var promoted := false ... promoted = true หลัง _promote()
+# ก่อน move_made.emit(...):
+	last_move_info = {
+		"side": ChessRules.opponent(side_to_move), "piece": piece, "kind": original_kind,
+		"from": from_cell, "to": to_cell, "moved": piece_moved, "castle": is_castle and piece_moved,
+		"en_passant": is_en_passant and piece_moved, "promoted": promoted,
+		"first_move": was_unmoved and piece_moved, "captured_kind": captured_kind,
+	}
+```
+(`side` คือฝ่ายที่เดิน — ตอนนี้ `side_to_move` สลับไปแล้ว จึงใช้ `opponent(side_to_move)`)
+
+**STEP 3 — `script/main.gd`**
+```gdscript
+const ScoreRules := preload("res://script/score_rules.gd")
+const CAPTURE_POINTS := ScoreRules.CAPTURE_POINTS
+const VICTORY_BONUS := ScoreRules.VICTORY_BONUS
+
+var _breakdown: Dictionary = {   # คะแนนแยกหมวดต่อฝ่าย — รวมแล้วเท่า _score / _score_p2
+	ChessPiece.Team.WHITE: {"CAPTURES": 0, "STRATEGY": 0, "SURVIVAL": 0, "VICTORY": 0},
+	ChessPiece.Team.BLACK: {"CAPTURES": 0, "STRATEGY": 0, "SURVIVAL": 0, "VICTORY": 0},
+}
+var _center_seen: Dictionary = {}
+var _moves_played: Dictionary = {ChessPiece.Team.WHITE: 0, ChessPiece.Team.BLACK: 0}
+```
+ใน `_ready()` ต่อ signal: `board.move_made.connect(_on_move_made_award_strategy)` แล้วเพิ่มฟังก์ชัน:
+```gdscript
+func _scores_side(side: int) -> bool:
+	return side == ChessPiece.Team.WHITE or _is_pvp()
+
+func _on_move_made_award_strategy(_from_cell: Vector2i, _to_cell: Vector2i, _piece: ChessPiece) -> void:
+	var info: Dictionary = board.last_move_info
+	if info.is_empty():
+		return
+	_moves_played[info.side] += 1
+	if not _scores_side(info.side):
+		return
+	var slot := 0
+	for award in ScoreRules.move_awards(board.board_state, info, _center_seen):
+		_award_score(award.points, info.side, "STRATEGY")
+		_show_score_toast("+%d %s" % [award.points, award.label], info.side, slot)
+		slot += 1
+```
+`_award_score(points, side, category := "CAPTURES")` เพิ่ม `_breakdown[side][category] += points` ก่อนบวกคะแนนรวม
+`_show_score_toast()` สร้าง Label ลอยขึ้นข้างแผงคะแนนของผู้เล่น (`+50 CHECK`) แล้วจางหาย
+ใน `_on_skill_used_stats()` ให้ `_award_score(ScoreRules.SKILL_POINTS, piece.side, "STRATEGY")` เมื่อ `_scores_side(piece.side)`
+ใน `_on_game_ended()` **ก่อน**โบนัสชนะ ให้โบนัสรอดทุกฝ่ายที่มีคะแนน:
+```gdscript
+	for side in [ChessPiece.Team.WHITE, ChessPiece.Team.BLACK]:
+		if _scores_side(side):
+			_award_score(ScoreRules.survival_bonus(board.board_state, side, _moves_played[side]), side, "SURVIVAL")
+```
+(โบนัสชนะเปลี่ยนเป็น `_award_score(VICTORY_BONUS, side, "VICTORY")`)
+
+**STEP 4 — ตารางรายละเอียดบนหน้าจอจบเกม** `_build_breakdown_grid()` สร้าง `GridContainer` 4 แถว (CAPTURES/STRATEGY/SURVIVAL/VICTORY)
+PVC 2 คอลัมน์ PVP 3 คอลัมน์ (ชื่อหมวด, P1, P2) วางต่อจากแถวคะแนนรวม แล้วใน `_show_end_screen()` เติมค่าจาก `_breakdown`
+เพราะของบนหน้าจอเยอะขึ้น ย่อป้าย VICTORY/LOSE เหลือ 240 พิกเซลและช่องไฟของ `VBoxContainer` เหลือ 6 เฉพาะตอนจบเกม และขยายแผงตามจำนวนแถว
+
+### ✅ ทดสอบ
+```bash
+godot --headless --path . --script res://tests/scoring_rules.gd
+```
+| ทดสอบ | ผลที่ควรได้ |
+|---|---|
+| ม้าขาวออกจากแถวหลังตาแรก | เห็น `+30 DEVELOP` ลอยข้างแผงคะแนน |
+| เดินรุกคิงดำ | `+50 CHECK` |
+| จบเกมแล้วดูหน้าจอผล | ตาราง 4 หมวดรวมกันเท่าคะแนนรวม |
+| ไม่เดินเลย ปล่อยหมดเวลาจนเสมอ | โบนัส SURVIVAL เป็น 0 |
 
 ---
 
@@ -5980,6 +6116,7 @@ chess-th/
 │   ├── board.tscn               ตอนที่ 5, 6, 7, 9
 │   └── main.tscn                ตอนที่ 5, 8, 10
 ├── script/
+│   ├── score_rules.gd           ตอนที่ 11.39  กติกาคะแนนหลายหมวด (ไม่ผูก node)
 │   ├── game_manager.gd          ตอนที่ 1, 11.38   [Autoload] โหมดเกม + ระดับความยาก AI
 │   ├── SceneTransition.gd       ตอนที่ 1   [Autoload]
 │   ├── loading.gd               ตอนที่ 2
@@ -6024,7 +6161,7 @@ chess-th/
 > `chess_piece.gd` (ตอนที่ 4), `piece_spawner.gd` (ตอนที่ 6), `Board.gd` (ตอนที่ 5),
 > `click_to_move.gd` (ตอนที่ 7), `main.gd` (ตอนที่ 8) และ `chess_ai.gd` (ตอนที่ 9) ไม่ใช่ไฟล์ใหม่
 > แต่ถูกแก้เพิ่มเติมหลายรอบในตอนที่ 11 (ระบบเลือด/เอฟเฟกต์/passive/active skill/animation เสริม) —
-> ดูเนื้อหาตอนที่ 11 ทั้งหมด (11.1–11.38) สำหรับโค้ดเวอร์ชันล่าสุด
+> ดูเนื้อหาตอนที่ 11 ทั้งหมด (11.1–11.39) สำหรับโค้ดเวอร์ชันล่าสุด
 
 ไฟล์ scene เพิ่มเติมจากตอนที่ 10: `Scene/settings.tscn`
 
@@ -6088,9 +6225,7 @@ chess_piece.gd  ←  chess_rules.gd  ←  chess_ai.gd
 | หัวข้อ | หมายเหตุ |
 |---|---|
 | **AI ยังไม่มีคะแนน king safety / piece-square table เต็มมาตรฐาน** | มีแค่ `positional_score()` แบบ heuristic ง่ายๆ 2 อย่าง (ตอนที่ 11.20) — ยังไม่เช็คว่าคิงถูกล้อมด้วยหมากป้องกันไหม |
-| **AI ไม่หลบเลี่ยงการเสมอแบบซ้ำตา** | เพิ่มกฎซ้ำ 3 ครั้งแล้ว (ตอนที่ 11.35) แต่ `chess_ai.gd` ไม่รู้จักประวัติตำแหน่ง — ถ้า AI ได้เปรียบอาจวนซ้ำจนเสมอเอง ปรับได้โดยส่ง `position_counts` เข้าไปลดคะแนนตาเดินที่ทำให้ตำแหน่งซ้ำ |
 | **King ไม่มีหลอดเลือดที่มีความหมายจริง** | ตั้ง `base_attack(KING)` ไว้เฉยๆ แต่คิงไม่เคยถูก `take_damage()` เรียกจริงในเกม เพราะกติกาหมากรุกไม่ยอมให้เดินไปกินคิงได้ตรงๆ (เกมจบด้วยรุกฆาตก่อนเสมอ) — เป็นพฤติกรรมที่ตั้งใจ ไม่ใช่บั๊ก |
-| **ไม่มีหน้าจอ "ดูสถิติทั้งหมด"** | เคยทำแล้วเอาออก — `StatsManager` ยังเก็บเกมที่เล่น/ชนะ/แพ้/เสมอ, หมากที่กิน, สกิลที่ใช้, HIGH SCORE แยกโหมด และ achievement ไว้ แต่ไม่มีฉากไว้ดู ต้องการค่อยทำใหม่ได้ |
 | **ตัวหมากขยับไม่แข็ง (สมจริง)** | ตั้งใจไม่ทำต่อ — ตอนที่ 11.24 เพิ่ม idle sway (แกว่งตัวเอียงเบาๆ) แบบโค้ดล้วนๆ ไว้แล้ว ถือว่าเพียงพอ ถ้าจะเอาท่าทางเดิน/โจมตีจริงต้องมี sprite sheet หรือ `Skeleton2D` rig เป็นงานอาร์ตเพิ่ม |
 
 
